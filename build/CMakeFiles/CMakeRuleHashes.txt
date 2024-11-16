@@ -1,0 +1,4 @@
+# Hashes of file build rules.
+4c7fa38e1593fa8d84ab1b5bff576fe4 Granular-Delay_artefacts/JuceLibraryCode/Granular-Delay_Standalone/PkgInfo
+35313c3663a793f4ea1f4307a9e7ab8e Granular-Delay_artefacts/JuceLibraryCode/Granular-Delay_VST3/PkgInfo
+e923b3f1535741009a681a55887bb17a Granular-Delay_artefacts/JuceLibraryCode/JuceHeader.h
