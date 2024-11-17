@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.22)
 cmake_policy(SET CMP0175 OLD)
 
-project(Granular-Delay VERSION 0.0.1)
+project(GranularDelay VERSION 0.0.1)
 
 add_subdirectory(JUCE)
 
-juce_add_plugin(Granular-Delay
+juce_add_plugin(GranularDelay
     # ICON_BIG ...                              # ICON_* arguments specify a path to an image file to use as an icon for the Standalone
     # ICON_SMALL ...
     COMPANY_NAME "MckinleyWood"                 # Specify the name of the plugin's author
@@ -20,14 +20,14 @@ juce_add_plugin(Granular-Delay
     FORMATS VST3 Standalone                     # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
     PRODUCT_NAME "Granular Delay")              # The name of the final executable, which can differ from the target name
 
-juce_generate_juce_header(Granular-Delay)
+juce_generate_juce_header(GranularDelay)
 
-target_sources(Granular-Delay
+target_sources(GranularDelay
     PRIVATE
         Source/PluginEditor.cpp
         Source/PluginProcessor.cpp)
 
-target_link_libraries(Granular-Delay
+target_link_libraries(GranularDelay
     PRIVATE
         # AudioPluginData           # If we'd created a binary data target, we'd link to it here
         juce::juce_audio_utils
