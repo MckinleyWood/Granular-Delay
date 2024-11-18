@@ -4,8 +4,8 @@
 # Build and JUCE folders
 **/build
 **/JUCE
-
 **/.DS_Store
+**/.vscode
 
 # Compiled Object files
 *.slo

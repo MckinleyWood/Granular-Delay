@@ -180,6 +180,14 @@ void GranularDelayAudioProcessor::setStateInformation (const void* data, int siz
     juce::ignoreUnused (data, sizeInBytes);
 }
 
+juce::AudioProcessorValueTreeState::ParameterLayout
+    GranularDelayAudioProcessor::createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    return layout;
+}
+
 //==============================================================================
 // This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

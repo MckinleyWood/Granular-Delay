@@ -18,5 +18,7 @@ private:
     // access the processor object that created it.
     GranularDelayAudioProcessor& processorRef;
 
+    juce::Slider gain;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GranularDelayAudioProcessorEditor)
 };
