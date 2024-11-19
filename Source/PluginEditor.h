@@ -18,7 +18,18 @@ private:
     // access the processor object that created it.
     GranularDelayAudioProcessor& processorRef;
 
-    juce::Slider gain;
+    // Create Gain slider
+    juce::Slider gainSlider;
+
+    // Function to get a vector of all components
+    std::vector<juce::Component*> getComps();
+
+    using APVTS = juce::AudioProcessorValueTreeState;
+    using Attachment = APVTS::SliderAttachment;
+
+    Attachment gainSliderAttachment;
+
+    //std::unique_ptr<juce::SliderAttachment> gainAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GranularDelayAudioProcessorEditor)
 };

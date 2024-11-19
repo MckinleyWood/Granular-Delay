@@ -3,14 +3,10 @@
 
 //==============================================================================
 GranularDelayAudioProcessor::GranularDelayAudioProcessor()
-     : AudioProcessor (BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                       )
+    : AudioProcessor (BusesProperties()
+                       .withInput  ("Input",  juce::AudioChannelSet::stereo())
+                       .withOutput ("Output", juce::AudioChannelSet::stereo())),
+        apvts(*this, nullptr, "Parameters", createParameterLayout())
 {
 }
 
@@ -150,6 +146,9 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
         auto* channelData = buffer.getWritePointer (channel);
         juce::ignoreUnused (channelData);
         // ..do something to the data...
+
+        float currentGain = apvts.getRawParameterValue("gain")->load();
+        buffer.applyGain(currentGain);
     }
 }
 
@@ -162,6 +161,7 @@ bool GranularDelayAudioProcessor::hasEditor() const
 juce::AudioProcessorEditor* GranularDelayAudioProcessor::createEditor()
 {
     return new GranularDelayAudioProcessorEditor (*this);
+    //return new juce::GenericAudioProcessorEditor (*this);
 }
 
 //==============================================================================
@@ -171,6 +171,9 @@ void GranularDelayAudioProcessor::getStateInformation (juce::MemoryBlock& destDa
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
     juce::ignoreUnused (destData);
+
+    juce::MemoryOutputStream mos(destData, true);
+    apvts.state.writeToStream(mos);
 }
 
 void GranularDelayAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
@@ -178,12 +181,24 @@ void GranularDelayAudioProcessor::setStateInformation (const void* data, int siz
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
     juce::ignoreUnused (data, sizeInBytes);
+
+    auto tree = juce::ValueTree::readFromData(data, sizeInBytes);
+    if (tree.isValid()) 
+    {
+        apvts.replaceState(tree);
+    }
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout
     GranularDelayAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "gain", 
+        "Gain", 
+        juce::NormalisableRange<float>(0.f, 2.f), 
+        1.f));
 
     return layout;
 }
@@ -194,3 +209,4 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new GranularDelayAudioProcessor();
 }
+
