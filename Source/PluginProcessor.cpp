@@ -118,7 +118,7 @@ bool GranularDelayAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
 }
 
 void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
-                                              juce::MidiBuffer& midiMessages)
+                                                juce::MidiBuffer& midiMessages)
 {
     juce::ignoreUnused (midiMessages);
 
@@ -145,8 +145,8 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
     {
         auto* channelData = buffer.getWritePointer (channel);
         juce::ignoreUnused (channelData);
-        // ..do something to the data...
 
+        // Gets gain parameter and applies it to each sample
         float currentGain = apvts.getRawParameterValue("gain")->load();
         buffer.applyGain(currentGain);
     }
@@ -160,28 +160,25 @@ bool GranularDelayAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* GranularDelayAudioProcessor::createEditor()
 {
-    return new GranularDelayAudioProcessorEditor (*this);
-    //return new juce::GenericAudioProcessorEditor (*this);
+    return new GranularDelayAudioProcessorEditor (*this); // Use custom editor
+    //return new juce::GenericAudioProcessorEditor (*this); // Use default editor
 }
 
 //==============================================================================
 void GranularDelayAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
     juce::ignoreUnused (destData);
 
+    // Write parameters to memory block
     juce::MemoryOutputStream mos(destData, true);
     apvts.state.writeToStream(mos);
 }
 
 void GranularDelayAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
     juce::ignoreUnused (data, sizeInBytes);
 
+    // Restore parameters from memory block
     auto tree = juce::ValueTree::readFromData(data, sizeInBytes);
     if (tree.isValid()) 
     {
@@ -194,11 +191,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>(
-        "gain", 
-        "Gain", 
-        juce::NormalisableRange<float>(0.f, 2.f), 
-        1.f));
+    // Add parameters to the APVTS layout
+    layout.add(std::make_unique<juce::AudioParameterFloat>("gain", "Gain", 0.f, 2.f, 1.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("delayTime", "Delay Time", 
+                                juce::NormalisableRange<float>(10.f, 10000.f, 0.f, 0.5f), 1000.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("feedback", "Feedback", 0.f, 1.f, 0.5f));
 
     return layout;
 }
