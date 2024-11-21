@@ -219,7 +219,7 @@ void GranularDelayAudioProcessorEditor::resized()
     feedbackSlider.setBounds(feedbackZone);
 }
 
-// Returns a vector containg all of our components
+// Returns a vector containing all of our components
 std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getComps()
 {
     return {&gainSlider,

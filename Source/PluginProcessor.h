@@ -49,7 +49,11 @@ public:
 
 private:
     //==============================================================================
-    
+    // Array of indexes for writing new samples to delayBuffer (one will be added per channel)
+    juce::Array<int> delayBufferWriteIndexArray;
+    juce::AudioBuffer<float> delayBuffer; // Circular buffer for delayed audio 
+    int delayTimeInSamples = 1000;
+    int maxDelayInSamples;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GranularDelayAudioProcessor)
