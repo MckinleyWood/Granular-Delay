@@ -27,7 +27,7 @@ void LookAndFeel::drawRotarySlider(juce::Graphics &g, int x, int y, int width, i
         r.setLeft(centre.getX() - 2);
         r.setRight(centre.getX() + 2);
         r.setTop(bounds.getY());
-        r.setBottom(centre.getY() - crs->getTextHeight() * 1.5);
+        r.setBottom(centre.getY() - crs->getTextHeight() * 3.f);
         p.addRoundedRectangle(r, 2.f);
 
         // Rotate the bar
@@ -66,7 +66,7 @@ void CustomRotarySlider::paint(juce::Graphics &g)
     auto sliderBounds = getSliderBounds();
 
     /* 
-    // Draw boxes around 
+    //// Draw boxes around 
     g.setColour(Colours::red);
     g.drawRect(getLocalBounds());
     g.setColour(Colours::yellow);
@@ -77,6 +77,32 @@ void CustomRotarySlider::paint(juce::Graphics &g)
                                       sliderBounds.getWidth(), sliderBounds.getHeight(),
                                       jmap(getValue(), range.getStart(), range.getEnd(), 0., 1.), 
                                       startAngle, endAngle, *this);
+
+    auto centre = sliderBounds.toFloat().getCentre();
+    auto radius = sliderBounds.getWidth() * 0.5f;
+
+    // Paint the min/max labels
+    g.setColour(Colours::white);
+    g.setFont(getTextHeight());
+
+    auto numLabels = labels.size();
+    for (int i = 0; i < numLabels; i++)
+    {
+        auto pos = labels[i].pos;
+        jassert(0.f <= pos && pos <= 1.f);
+
+        auto angle = jmap(pos, 0.f, 1.f, startAngle, endAngle);
+
+        auto c = centre.getPointOnCircumference(radius + getTextHeight() * 0.5f + 1.f, angle);
+
+        Rectangle<float> r;
+        auto str = labels[i].label;
+        r.setSize(g.getCurrentFont().getStringWidth(str), getTextHeight());
+        r.setCentre(c);
+        r.setY(r.getY() + getTextHeight());
+
+        g.drawFittedText(str, r.toNearestInt(), Justification::centred, 1);
+    }
 }
 
 juce::Rectangle<int> CustomRotarySlider::getSliderBounds() const
@@ -147,6 +173,14 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
 {
     juce::ignoreUnused (processorRef);
 
+    // Add min/max labels
+    gainSlider.labels.add({0.f, "0%"});
+    gainSlider.labels.add({1.f, "200%"});
+    delayTimeSlider.labels.add({0.f, "10ms"});
+    delayTimeSlider.labels.add({1.f, "10s"});
+    feedbackSlider.labels.add({0.f, "0%"});
+    feedbackSlider.labels.add({1.f, "100%"});
+
     // Make all components visible
     for(auto* comp : getComps())
     {
@@ -168,6 +202,7 @@ void GranularDelayAudioProcessorEditor::paint (juce::Graphics& g)
     g.fillAll (juce::Colours::black);
 }
 
+// This is where we set the boundaries of the components
 void GranularDelayAudioProcessorEditor::resized()
 {
     // Partition the editor into zones
@@ -184,9 +219,9 @@ void GranularDelayAudioProcessorEditor::resized()
     feedbackSlider.setBounds(feedbackZone);
 }
 
+// Returns a vector containg all of our components
 std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getComps()
 {
-    // Return a vector containg all of our components
     return {&gainSlider,
             &delayTimeSlider,
             &feedbackSlider};
