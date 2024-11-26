@@ -60,11 +60,11 @@ public:
 
 private:
     //==============================================================================
-    void GranularDelayAudioProcessor::fillDelayBuffer(float* channelData, int channel, 
-                                                      int mainBufferSize, int delayBufferSize);
-    void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& buffer,
-                                                          juce::AudioBuffer<float>& delayBuffer, int channel, 
-                                                          int mainBufferSize, int delayBufferSize);
+    void fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel);
+
+    void readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float feedback);
+
+    void updateWritePosition(juce::AudioBuffer<float>& buffer);
 
     //==============================================================================
     juce::AudioBuffer<float> delayBuffer;

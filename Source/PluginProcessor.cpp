@@ -138,7 +138,6 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
 
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels  = getTotalNumOutputChannels();
-    auto mainBufferSize = buffer.getNumSamples();
     auto delayBufferSize = delayBuffer.getNumSamples();
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
@@ -154,24 +153,31 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-        auto* channelData = buffer.getWritePointer(channel);
+        // Copy the input signal to delayBuffer
+        fillDelayBuffer(buffer, channel);
 
-        fillDelayBuffer(channelData, channel, mainBufferSize, delayBufferSize);
-        readFromDelayBuffer(buffer, delayBuffer, channel, mainBufferSize, delayBufferSize);
+        // Read delayed signal back to main buffer
+        readFromDelayBuffer(buffer, channel, feedback);
+
+        // Copy the input signal to delayBuffer
+        fillDelayBuffer(buffer, channel);
     }
 
-    writePosition += mainBufferSize;
-    writePosition %= delayBufferSize;
+    updateWritePosition(buffer);
+    
 }
 
-void GranularDelayAudioProcessor::fillDelayBuffer(float* channelData, int channel, 
-                                                  int mainBufferSize, int delayBufferSize)
-{
+void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel)
+{   
+    auto mainBufferSize = buffer.getNumSamples();
+    auto delayBufferSize = delayBuffer.getNumSamples();
+
     // Check if there is enough room for full buffer in delayBuffer
     if (delayBufferSize > mainBufferSize + writePosition)
     {
         // If so, copy entire buffer over
-        delayBuffer.copyFromWithRamp(channel, writePosition, channelData, mainBufferSize, 1.f, 1.f);
+        delayBuffer.copyFromWithRamp(channel, writePosition, buffer.getWritePointer(channel), 
+                                     mainBufferSize, 1.f, 1.f);
     }
     else
     {
@@ -180,21 +186,24 @@ void GranularDelayAudioProcessor::fillDelayBuffer(float* channelData, int channe
         auto numSamplesLeft = mainBufferSize - numSamplesToEnd;
 
         // Copy samples to end / start
-        delayBuffer.copyFromWithRamp(channel, writePosition, channelData, numSamplesToEnd, 1.f, 1.f);
-        delayBuffer.copyFromWithRamp(channel, 0, channelData + numSamplesToEnd, numSamplesLeft, 1.f, 1.f);
+        delayBuffer.copyFromWithRamp(channel, writePosition, buffer.getWritePointer(channel), 
+                                     numSamplesToEnd, 1.f, 1.f);
+        delayBuffer.copyFromWithRamp(channel, 0, buffer.getWritePointer(channel, numSamplesToEnd), 
+                                     numSamplesLeft, 1.f, 1.f);
     }    
 }
 
-void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& buffer,
-                                                      juce::AudioBuffer<float>& delayBuffer, int channel, 
-                                                      int mainBufferSize, int delayBufferSize)
+void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float feedback)
 {
+    auto mainBufferSize = buffer.getNumSamples();
+    auto delayBufferSize = delayBuffer.getNumSamples();
+
     // Check if there are enough samples in delayBuffer left to fill the main buffer
     if (delayBufferSize > mainBufferSize + readPosition)
     {
         // If so, copy mainBufferSize samples
         buffer.addFromWithRamp(channel, 0, delayBuffer.getReadPointer(channel, readPosition), 
-                                mainBufferSize, 1.f, 1.f);
+                                mainBufferSize, feedback, feedback);
     }
     else
     {
@@ -204,11 +213,20 @@ void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& 
 
         // Copy samples from end / start or delayBuffer
         buffer.addFromWithRamp(channel, 0, delayBuffer.getReadPointer(channel, readPosition), 
-                                numSamplesToEnd, 1.f, 1.f);
+                                numSamplesToEnd, feedback, feedback);
         buffer.addFromWithRamp(channel, numSamplesToEnd, 
                                 delayBuffer.getReadPointer(channel, 0), 
-                                numSamplesLeft, 1.f, 1.f);
+                                numSamplesLeft, feedback, feedback);
     }
+}
+
+void GranularDelayAudioProcessor::updateWritePosition(juce::AudioBuffer<float>& buffer)
+{
+    auto mainBufferSize = buffer.getNumSamples();
+    auto delayBufferSize = delayBuffer.getNumSamples();
+
+    writePosition += mainBufferSize;
+    writePosition %= delayBufferSize;
 }
 
 //==============================================================================
