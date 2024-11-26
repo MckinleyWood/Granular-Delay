@@ -60,23 +60,16 @@ public:
 
 private:
     //==============================================================================
-    using DelayLine = juce::dsp::DelayLine<float>;
-    using GainStage = juce::dsp::Gain<float>;
-    using MonoChain = juce::dsp::ProcessorChain<DelayLine, GainStage>;
+    void GranularDelayAudioProcessor::fillDelayBuffer(float* channelData, int channel, 
+                                                      int mainBufferSize, int delayBufferSize);
+    void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& buffer,
+                                                          juce::AudioBuffer<float>& delayBuffer, int channel, 
+                                                          int mainBufferSize, int delayBufferSize);
 
-    juce::Array<MonoChain> chains;
-
-    enum chainPositions
-    {
-        delay,
-        gain,
-    };
-
-    // // Array of indexes for writing new samples to delayBuffer (one will be added per channel)
-    // juce::Array<int> delayBufferWriteIndexArray;
-    // juce::AudioBuffer<float> delayBuffer; // Circular buffer for delayed audio 
-    // int delayTimeInSamples = 1000;
-    // int maxDelayInSamples;
+    //==============================================================================
+    juce::AudioBuffer<float> delayBuffer;
+    int writePosition { 0 };
+    int readPosition { 0 };
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GranularDelayAudioProcessor)
