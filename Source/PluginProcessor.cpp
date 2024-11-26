@@ -8,6 +8,8 @@ GranularDelayAudioProcessor::GranularDelayAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo())),
         apvts(*this, nullptr, "Parameters", createParameterLayout())
 {
+    chains.add(MonoChain());
+    chains.add(MonoChain());
 }
 
 GranularDelayAudioProcessor::~GranularDelayAudioProcessor()
@@ -84,21 +86,43 @@ void GranularDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesP
 {
     juce::ignoreUnused (sampleRate, samplesPerBlock);
 
-    maxDelayInSamples = sampleRate * 10;
+    juce::dsp::ProcessSpec spec;
+    spec.maximumBlockSize = samplesPerBlock;
+    spec.numChannels = 1;
+    spec.sampleRate = sampleRate;
 
-    // Set the size of the delay buffer
-    delayBuffer.setSize(getTotalNumInputChannels(), static_cast<int>(maxDelayInSamples)); // 10 seconds buffer
+    chains[0].prepare(spec);
+    chains[1].prepare(spec);
 
-    // Initialize delay buffer with zeros
-    delayBuffer.clear();
+    auto chainSettings = getChainSettings(apvts);
 
-    // Initialize delayBufferWriteIndex for each channel
-    delayBufferWriteIndexArray.resize(getTotalNumInputChannels());
-    delayBufferWriteIndexArray.clear();
+    float gain = chainSettings.gain;
+    float delayTimeInSamples = static_cast<int>((chainSettings.delayTime / 1000.0) * sampleRate);
+    float feedback = chainSettings.feedback;
+    
+    chains[0].get<chainPositions::delay>().setMaximumDelayInSamples(sampleRate * 10);
+    chains[0].get<chainPositions::delay>().setDelay(delayTimeInSamples);
+    chains[0].get<chainPositions::gain>().setGainLinear(gain);
+    
+    chains[1].get<chainPositions::delay>().setMaximumDelayInSamples(sampleRate * 10);
+    chains[1].get<chainPositions::delay>().setDelay(delayTimeInSamples);
+    chains[1].get<chainPositions::gain>().setGainLinear(gain);
 
-    // Set delay time in samples
-    float delayTimeMs = apvts.getRawParameterValue("delayTime")->load();
-    delayTimeInSamples = static_cast<int>((delayTimeMs / 1000.0) * sampleRate); // Convert ms to samples
+    // maxDelayInSamples = sampleRate * 10;
+
+    // // Set the size of the delay buffer
+    // delayBuffer.setSize(getTotalNumInputChannels(), static_cast<int>(maxDelayInSamples)); // 10 seconds buffer
+
+    // // Initialize delay buffer with zeros
+    // delayBuffer.clear();
+
+    // // Initialize delayBufferWriteIndex for each channel
+    // delayBufferWriteIndexArray.resize(getTotalNumInputChannels());
+    // delayBufferWriteIndexArray.clear();
+
+    // // Set delay time in samples
+    // float delayTimeMs = apvts.getRawParameterValue("delayTime")->load();
+    // delayTimeInSamples = static_cast<int>((delayTimeMs / 1000.0) * sampleRate); // Convert ms to samples
 }
 
 void GranularDelayAudioProcessor::releaseResources()
@@ -134,41 +158,70 @@ bool GranularDelayAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
 void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                                 juce::MidiBuffer& midiMessages)
 {
+    DBG("Processing block with " << buffer.getNumSamples() << " samples, sample rate: " << getSampleRate());
+    for (int i = 0; i < 10 && i < buffer.getNumSamples(); ++i)
+    {
+        DBG("Input sample " << i << ": " << buffer.getSample(0, i));
+    }
+    
     juce::ignoreUnused(midiMessages);
 
     juce::ScopedNoDenormals noDenormals;
 
     auto totalNumInputChannels  = getTotalNumInputChannels();
+    auto totalNumOutputChannels  = getTotalNumOutputChannels();
     auto numSamplesInBuffer = buffer.getNumSamples();
+
+
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear(i, 0, buffer.getNumSamples());
+
+    auto chainSettings = getChainSettings(apvts);
+
+    float gain = chainSettings.gain;
+    float delayTimeInSamples = static_cast<int>((chainSettings.delayTime / 1000.0) * getSampleRate());
+    float feedback = chainSettings.feedback;
+
+    juce::dsp::AudioBlock<float> block(buffer);
+
+    // Not using these right now 
+    // auto leftBlock = block.getSingleChannelBlock(0);
+    // auto rightBlock = block.getSingleChannelBlock(1);
+    // juce::dsp::ProcessContextReplacing<float> leftContext(leftBlock);
+    // juce::dsp::ProcessContextReplacing<float> rightContext(rightBlock);
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-        auto* channelData = buffer.getWritePointer(channel);  // Pointer to the main buffer data for this channel
-        auto* delayData = delayBuffer.getWritePointer(channel);  // Pointer to the delay buffer data for this channel
+        auto chain = chains[channel]; // The ProcessorChain for this channel
 
-        juce::ignoreUnused (channelData);
-
-        float gain = apvts.getRawParameterValue("gain")->load();
-        float feedback = apvts.getRawParameterValue("feedback")->load();
-        float delayTimeMs = apvts.getRawParameterValue("delayTime")->load();
-        delayTimeInSamples = static_cast<int>((delayTimeMs / 1000.0) * getSampleRate());
+        chain.get<chainPositions::delay>().setDelay(delayTimeInSamples);
+        chain.get<chainPositions::gain>().setGainLinear(gain);
 
         // Applies delay effect to each sample in the buffer
         for (int sample = 0; sample < numSamplesInBuffer; ++sample)
         {
-            int delayBufferWriteIndex = delayBufferWriteIndexArray[channel];
-            int delayBufferReadIndex = (delayBufferWriteIndex - delayTimeInSamples 
-                                        + maxDelayInSamples) % maxDelayInSamples;
+            // Get input samples from the AudioBlock and DelayLine
+            float inputSample = block.getSample(channel, sample);
+            float delayedSample = chain.get<chainPositions::delay>().popSample(channel);
 
-            float delayedSample = delayData[delayBufferReadIndex];
+            // Add feedback
+            float outputSample = inputSample + delayedSample * feedback;
 
-            channelData[sample] += delayedSample * feedback;
-            delayData[delayBufferWriteIndex] = channelData[sample];
+            // Write back to delay line
+            chain.get<chainPositions::delay>().pushSample(channel, outputSample);
 
-            delayBufferWriteIndexArray.insert(channel, (delayBufferWriteIndex + 1) % maxDelayInSamples);
+            // Output the processed sample
+            block.setSample(channel, sample, outputSample);
         }
 
-        buffer.applyGain(gain);
+        // Process entire block output gain
+        block.multiplyBy(chain.get<chainPositions::gain>().getGainLinear());
+    }
+
+    // Log output data after processing
+    for (int i = 0; i < 10 && i < buffer.getNumSamples(); ++i)
+    {
+        DBG("Output sample " << i << ": " << buffer.getSample(0, i));
     }
 }
 
@@ -204,6 +257,17 @@ void GranularDelayAudioProcessor::setStateInformation (const void* data, int siz
     {
         apvts.replaceState(tree);
     }
+}
+
+ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
+{
+    ChainSettings settings;
+
+    settings.gain = apvts.getRawParameterValue("gain")->load();
+    settings.delayTime = apvts.getRawParameterValue("delayTime")->load();
+    settings.feedback = apvts.getRawParameterValue("feedback")->load();
+
+    return settings;
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout
