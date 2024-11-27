@@ -84,19 +84,9 @@ void GranularDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesP
 {
     juce::ignoreUnused (sampleRate, samplesPerBlock);
 
-    juce::dsp::ProcessSpec spec;
-    spec.maximumBlockSize = samplesPerBlock;
-    spec.numChannels = 1;
-    spec.sampleRate = sampleRate;
-
-    auto chainSettings = getChainSettings(apvts);
-
-    float gain = chainSettings.gain;
-    float delayTimeInSamples = static_cast<int>((chainSettings.delayTime / 1000.0) * sampleRate);
-    float feedback = chainSettings.feedback;
-
     auto delayBufferSize = sampleRate * 10.0;
     delayBuffer.setSize(getTotalNumOutputChannels(), (int)delayBufferSize);
+    tempBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
 }
 
 void GranularDelayAudioProcessor::releaseResources()
@@ -136,8 +126,9 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
 
     juce::ScopedNoDenormals noDenormals;
 
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels  = getTotalNumOutputChannels();
+    auto totalNumInputChannels = getTotalNumInputChannels();
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
+    auto mainBufferSize = buffer.getNumSamples();
     auto delayBufferSize = delayBuffer.getNumSamples();
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
@@ -148,42 +139,51 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
     float gain = chainSettings.gain;
     int delayTimeInSamples = static_cast<int>((chainSettings.delayTime / 1000.0) * getSampleRate());
     float feedback = chainSettings.feedback;
+    float mix = chainSettings.mix;
 
     readPosition  = (writePosition - delayTimeInSamples + delayBufferSize) % delayBufferSize;
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        // Copy the input signal to delayBuffer
+    {        
+        // Copy the input buffer into delayBuffer at writePosition
         fillDelayBuffer(buffer, channel);
 
-        // Read delayed signal back to main buffer
-        readFromDelayBuffer(buffer, channel, feedback);
+        // Copy the input signal to a temporary buffer
+        tempBuffer.copyFrom(channel, 0, buffer.getWritePointer(channel), mainBufferSize);
 
-        // Copy the input signal to delayBuffer
-        fillDelayBuffer(buffer, channel);
+        // Add delayed signal (from readPosition) to temporary buffer
+        readFromDelayBuffer(tempBuffer, channel, feedback);
+
+        // Mix echoes with dry signal 
+        buffer.applyGain(1.f - mix);
+        readFromDelayBuffer(buffer, channel, mix);
+
+        // Copy the summed signal back to delayBuffer
+        fillDelayBuffer(tempBuffer, channel);
     }
 
     updateWritePosition(buffer);
-    
+
+    buffer.applyGain(gain);
 }
 
 void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel)
 {   
-    auto mainBufferSize = buffer.getNumSamples();
+    auto bufferSize = buffer.getNumSamples();
     auto delayBufferSize = delayBuffer.getNumSamples();
 
     // Check if there is enough room for full buffer in delayBuffer
-    if (delayBufferSize > mainBufferSize + writePosition)
+    if (delayBufferSize > bufferSize + writePosition)
     {
         // If so, copy entire buffer over
         delayBuffer.copyFromWithRamp(channel, writePosition, buffer.getWritePointer(channel), 
-                                     mainBufferSize, 1.f, 1.f);
+                                     bufferSize, 1.f, 1.f);
     }
     else
     {
         // Determine how much space is left at the end / how much to put at start
         auto numSamplesToEnd = delayBufferSize - writePosition;
-        auto numSamplesLeft = mainBufferSize - numSamplesToEnd;
+        auto numSamplesLeft = bufferSize - numSamplesToEnd;
 
         // Copy samples to end / start
         delayBuffer.copyFromWithRamp(channel, writePosition, buffer.getWritePointer(channel), 
@@ -211,7 +211,7 @@ void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& 
         auto numSamplesToEnd = delayBufferSize - readPosition;
         auto numSamplesLeft = mainBufferSize - numSamplesToEnd;
 
-        // Copy samples from end / start or delayBuffer
+        // Copy samples from end / start of delayBuffer
         buffer.addFromWithRamp(channel, 0, delayBuffer.getReadPointer(channel, readPosition), 
                                 numSamplesToEnd, feedback, feedback);
         buffer.addFromWithRamp(channel, numSamplesToEnd, 
@@ -222,11 +222,8 @@ void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& 
 
 void GranularDelayAudioProcessor::updateWritePosition(juce::AudioBuffer<float>& buffer)
 {
-    auto mainBufferSize = buffer.getNumSamples();
-    auto delayBufferSize = delayBuffer.getNumSamples();
-
-    writePosition += mainBufferSize;
-    writePosition %= delayBufferSize;
+    writePosition += buffer.getNumSamples();
+    writePosition %= delayBuffer.getNumSamples();
 }
 
 //==============================================================================
@@ -270,6 +267,7 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
     settings.gain = apvts.getRawParameterValue("gain")->load();
     settings.delayTime = apvts.getRawParameterValue("delayTime")->load();
     settings.feedback = apvts.getRawParameterValue("feedback")->load();
+    settings.mix = apvts.getRawParameterValue("mix")->load();
 
     return settings;
 }
@@ -284,7 +282,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add(std::make_unique<juce::AudioParameterFloat>("delayTime", "Delay Time", 
                                 juce::NormalisableRange<float>(10.f, 10000.f, 0.f, 0.5f), 1000.f));
     layout.add(std::make_unique<juce::AudioParameterFloat>("feedback", "Feedback", 0.f, 1.f, 0.5f));
-
+    layout.add(std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.f, 1.f, 0.5f));
     return layout;
 }
 

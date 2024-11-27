@@ -75,7 +75,7 @@ void CustomRotarySlider::paint(juce::Graphics &g)
 
     getLookAndFeel().drawRotarySlider(g, sliderBounds.getX(), sliderBounds.getY(),
                                       sliderBounds.getWidth(), sliderBounds.getHeight(),
-                                      jmap(getValue(), range.getStart(), range.getEnd(), 0., 1.), 
+                                      (float)jmap(getValue(), range.getStart(), range.getEnd(), 0., 1.), 
                                       startAngle, endAngle, *this);
 
     auto centre = sliderBounds.toFloat().getCentre();
@@ -103,6 +103,17 @@ void CustomRotarySlider::paint(juce::Graphics &g)
 
         g.drawFittedText(str, r.toNearestInt(), Justification::centred, 1);
     }
+
+    // Paint the slider title
+    g.setColour(Colours::white);
+    g.setFont(getTextHeight());
+
+    Rectangle<float> r;
+    auto str = parameterName;
+    r.setSize(g.getCurrentFont().getStringWidth(str), getTextHeight());
+    r.setCentre(centre);
+    r.setY(sliderBounds.getY() - (getTextHeight() + 5));
+    g.drawFittedText(str, r.toNearestInt(), Justification::centred, 1);
 }
 
 juce::Rectangle<int> CustomRotarySlider::getSliderBounds() const
@@ -123,7 +134,7 @@ juce::String CustomRotarySlider::getDisplayString() const
 
     if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(param))
     {
-        float val = getValue();
+        float val = (float)getValue();
         juce::String id = getParameterID();
 
         if (id == "delayTime")
@@ -166,10 +177,13 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
     gainSlider(*processorRef.apvts.getParameter("gain"), "%"),
     delayTimeSlider(*processorRef.apvts.getParameter("delayTime"), "ms"),
     feedbackSlider(*processorRef.apvts.getParameter("feedback"), "%"),
+    mixSlider(*processorRef.apvts.getParameter("mix"), "%"),
 
     gainSliderAttachment(processorRef.apvts, "gain", gainSlider),
     delayTimeSliderAttachment(processorRef.apvts, "delayTime", delayTimeSlider),
-    feedbackSliderAttachment(processorRef.apvts, "feedback", feedbackSlider)
+    feedbackSliderAttachment(processorRef.apvts, "feedback", feedbackSlider),
+    mixSliderAttachment(processorRef.apvts, "mix", mixSlider)
+
 {
     juce::ignoreUnused (processorRef);
 
@@ -180,6 +194,8 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
     delayTimeSlider.labels.add({1.f, "10s"});
     feedbackSlider.labels.add({0.f, "0%"});
     feedbackSlider.labels.add({1.f, "100%"});
+    mixSlider.labels.add({0.f, "0%"});
+    mixSlider.labels.add({1.f, "100%"});
 
     // Make all components visible
     for(auto* comp : getComps())
@@ -207,14 +223,14 @@ void GranularDelayAudioProcessorEditor::resized()
 {
     // Partition the editor into zones
     auto bounds = getLocalBounds();
-    bounds.reduced(10);
+    bounds.reduce(10, 10);
     auto sliderZone = bounds.removeFromTop(bounds.getHeight() * 0.33);
     auto gainZone = bounds.removeFromLeft(bounds.getWidth() * 0.33);
     auto delayTimeZone = bounds.removeFromLeft(bounds.getWidth() * 0.5);
     auto feedbackZone = bounds;
 
     // Set the bounds of the sliders
-    gainSlider.setBounds(gainZone);
+    mixSlider.setBounds(gainZone);
     delayTimeSlider.setBounds(delayTimeZone);
     feedbackSlider.setBounds(feedbackZone);
 }
@@ -224,5 +240,6 @@ std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getComps()
 {
     return {&gainSlider,
             &delayTimeSlider,
-            &feedbackSlider};
+            &feedbackSlider,
+            &mixSlider};
 }

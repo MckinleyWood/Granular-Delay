@@ -9,6 +9,7 @@ struct ChainSettings
     float gain;
     float delayTime;
     float feedback;
+    float mix;
 };
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
@@ -61,13 +62,12 @@ public:
 private:
     //==============================================================================
     void fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel);
-
     void readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float feedback);
-
     void updateWritePosition(juce::AudioBuffer<float>& buffer);
 
     //==============================================================================
     juce::AudioBuffer<float> delayBuffer;
+    juce::AudioBuffer<float> tempBuffer;
     int writePosition { 0 };
     int readPosition { 0 };
 

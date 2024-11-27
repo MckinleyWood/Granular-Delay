@@ -20,6 +20,7 @@ struct CustomRotarySlider : juce::Slider
                        juce::Slider::TextEntryBoxPosition::NoTextBox),
           param(&rap),
           parameterID(rap.paramID),
+          parameterName(rap.name),
           suffix(unitSuffix)
     {
         setLookAndFeel(&lnf);
@@ -47,8 +48,9 @@ struct CustomRotarySlider : juce::Slider
 private:
     LookAndFeel lnf;
     juce::RangedAudioParameter* param;
-    juce::String suffix;
     juce::String parameterID;
+    juce::String parameterName;
+    juce::String suffix;
 };
 
 //==============================================================================
@@ -70,7 +72,8 @@ private:
     // Create control components
     CustomRotarySlider gainSlider,
                        delayTimeSlider,
-                       feedbackSlider;
+                       feedbackSlider,
+                       mixSlider;
 
     // Function to get a vector of all components
     std::vector<juce::Component*> getComps();
@@ -82,7 +85,8 @@ private:
     // Create control Attachments 
     Attachment gainSliderAttachment,
                delayTimeSliderAttachment,
-               feedbackSliderAttachment;
+               feedbackSliderAttachment,
+               mixSliderAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GranularDelayAudioProcessorEditor)
 };
