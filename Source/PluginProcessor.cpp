@@ -145,21 +145,18 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {        
-        // Copy the input buffer into delayBuffer at writePosition
-        fillDelayBuffer(buffer, channel);
-
         // Copy the input signal to a temporary buffer
         tempBuffer.copyFrom(channel, 0, buffer.getWritePointer(channel), mainBufferSize);
 
         // Add delayed signal (from readPosition) to temporary buffer
-        readFromDelayBuffer(tempBuffer, channel, feedback);
+        readFromDelayBuffer(tempBuffer, channel, 1.f);
 
         // Mix echoes with dry signal 
-        buffer.applyGain(1.f - mix);
+        buffer.applyGain(channel, 0, mainBufferSize, 1.f - mix);
         readFromDelayBuffer(buffer, channel, mix);
 
         // Copy the summed signal back to delayBuffer
-        fillDelayBuffer(tempBuffer, channel);
+        fillDelayBuffer(tempBuffer, channel, feedback);
     }
 
     updateWritePosition(buffer);
@@ -167,7 +164,7 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
     buffer.applyGain(gain);
 }
 
-void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel)
+void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float gain)
 {   
     auto bufferSize = buffer.getNumSamples();
     auto delayBufferSize = delayBuffer.getNumSamples();
@@ -176,8 +173,7 @@ void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buff
     if (delayBufferSize > bufferSize + writePosition)
     {
         // If so, copy entire buffer over
-        delayBuffer.copyFromWithRamp(channel, writePosition, buffer.getWritePointer(channel), 
-                                     bufferSize, 1.f, 1.f);
+        delayBuffer.copyFrom(channel, writePosition, buffer.getWritePointer(channel), bufferSize, gain);
     }
     else
     {
@@ -186,14 +182,12 @@ void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buff
         auto numSamplesLeft = bufferSize - numSamplesToEnd;
 
         // Copy samples to end / start
-        delayBuffer.copyFromWithRamp(channel, writePosition, buffer.getWritePointer(channel), 
-                                     numSamplesToEnd, 1.f, 1.f);
-        delayBuffer.copyFromWithRamp(channel, 0, buffer.getWritePointer(channel, numSamplesToEnd), 
-                                     numSamplesLeft, 1.f, 1.f);
+        delayBuffer.copyFrom(channel, writePosition, buffer.getWritePointer(channel), numSamplesToEnd, gain);
+        delayBuffer.copyFrom(channel, 0, buffer.getWritePointer(channel, numSamplesToEnd), numSamplesLeft, gain);
     }    
 }
 
-void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float feedback)
+void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float gain)
 {
     auto mainBufferSize = buffer.getNumSamples();
     auto delayBufferSize = delayBuffer.getNumSamples();
@@ -201,9 +195,8 @@ void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& 
     // Check if there are enough samples in delayBuffer left to fill the main buffer
     if (delayBufferSize > mainBufferSize + readPosition)
     {
-        // If so, copy mainBufferSize samples
-        buffer.addFromWithRamp(channel, 0, delayBuffer.getReadPointer(channel, readPosition), 
-                                mainBufferSize, feedback, feedback);
+        // If so, add mainBufferSize samples
+        buffer.addFrom(channel, 0, delayBuffer.getReadPointer(channel, readPosition), mainBufferSize, gain);
     }
     else
     {
@@ -211,12 +204,9 @@ void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& 
         auto numSamplesToEnd = delayBufferSize - readPosition;
         auto numSamplesLeft = mainBufferSize - numSamplesToEnd;
 
-        // Copy samples from end / start of delayBuffer
-        buffer.addFromWithRamp(channel, 0, delayBuffer.getReadPointer(channel, readPosition), 
-                                numSamplesToEnd, feedback, feedback);
-        buffer.addFromWithRamp(channel, numSamplesToEnd, 
-                                delayBuffer.getReadPointer(channel, 0), 
-                                numSamplesLeft, feedback, feedback);
+        // Add samples from end / start of delayBuffer
+        buffer.addFrom(channel, 0, delayBuffer.getReadPointer(channel, readPosition), numSamplesToEnd, gain);
+        buffer.addFrom(channel, numSamplesToEnd, delayBuffer.getReadPointer(channel, 0), numSamplesLeft, gain);
     }
 }
 
