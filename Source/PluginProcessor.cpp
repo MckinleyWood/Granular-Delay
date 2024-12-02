@@ -4,10 +4,13 @@
 //==============================================================================
 GranularDelayAudioProcessor::GranularDelayAudioProcessor()
     : AudioProcessor (BusesProperties()
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo())
-                       .withOutput ("Output", juce::AudioChannelSet::stereo())),
-        apvts(*this, nullptr, "Parameters", createParameterLayout())
+                      .withInput  ("Input",  juce::AudioChannelSet::stereo())
+                      .withOutput ("Output", juce::AudioChannelSet::stereo())),
+                      apvts(*this, nullptr, "Parameters", createParameterLayout()),
+                      waveViewer(1)
 {
+    waveViewer.setRepaintRate(60);
+    waveViewer.setBufferSize(1024);
 }
 
 GranularDelayAudioProcessor::~GranularDelayAudioProcessor()
@@ -84,9 +87,11 @@ void GranularDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesP
 {
     juce::ignoreUnused (sampleRate, samplesPerBlock);
 
-    auto delayBufferSize = sampleRate * 10.0;
-    delayBuffer.setSize(getTotalNumOutputChannels(), (int)delayBufferSize);
+    auto delayBufferSize = static_cast<int>(sampleRate * 10);
+    delayBuffer.setSize(getTotalNumOutputChannels(), delayBufferSize);
     tempBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
+
+    // waveViewer.setBufferSize(???);
 }
 
 void GranularDelayAudioProcessor::releaseResources()
@@ -136,15 +141,23 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
 
     // Get parameter values
     auto chainSettings = getChainSettings(apvts);
-    float gain = chainSettings.gain;
+    float inputGain = chainSettings.inputGain;
     int delayTimeInSamples = static_cast<int>((chainSettings.delayTime / 1000.0) * getSampleRate());
     float feedback = chainSettings.feedback;
     float mix = chainSettings.mix;
+    float outputGain = chainSettings.outputGain;
 
-    readPosition  = (writePosition - delayTimeInSamples + delayBufferSize) % delayBufferSize;
+    readPosition = (writePosition - delayTimeInSamples + delayBufferSize) % delayBufferSize;
+
+    // Now we process!
+    buffer.applyGain(inputGain);
+
+    // Give the buffer to the wave viewer
+    waveViewer.pushBuffer(buffer);
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {        
+        // Apply delay effect... 
         // Copy the input signal to a temporary buffer
         tempBuffer.copyFrom(channel, 0, buffer.getWritePointer(channel), mainBufferSize);
 
@@ -155,13 +168,13 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
         buffer.applyGain(channel, 0, mainBufferSize, 1.f - mix);
         readFromDelayBuffer(buffer, channel, mix);
 
-        // Copy the summed signal back to delayBuffer
+        // Copy the summed signal back to delayBuffer, apply feedback coefficient
         fillDelayBuffer(tempBuffer, channel, feedback);
     }
 
     updateWritePosition(buffer);
 
-    buffer.applyGain(gain);
+    buffer.applyGain(outputGain);
 }
 
 void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float gain)
@@ -254,10 +267,16 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
 {
     ChainSettings settings;
 
-    settings.gain = apvts.getRawParameterValue("gain")->load();
+    settings.inputGain = apvts.getRawParameterValue("inputGain")->load();
     settings.delayTime = apvts.getRawParameterValue("delayTime")->load();
     settings.feedback = apvts.getRawParameterValue("feedback")->load();
     settings.mix = apvts.getRawParameterValue("mix")->load();
+    settings.outputGain = apvts.getRawParameterValue("outputGain")->load();
+    settings.dummyParameter0 = apvts.getRawParameterValue("dummyParameter0")->load();
+    settings.dummyParameter1 = apvts.getRawParameterValue("dummyParameter1")->load();
+    settings.dummyParameter2 = apvts.getRawParameterValue("dummyParameter2")->load();
+    settings.dummyParameter3 = apvts.getRawParameterValue("dummyParameter3")->load();
+    settings.dummyParameter4 = apvts.getRawParameterValue("dummyParameter4")->load();
 
     return settings;
 }
@@ -268,11 +287,27 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
     // Add parameters to the APVTS layout
-    layout.add(std::make_unique<juce::AudioParameterFloat>("gain", "Gain", 0.f, 2.f, 1.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("inputGain", "Input Gain", 0.f, 2.f, 1.f));
+
     layout.add(std::make_unique<juce::AudioParameterFloat>("delayTime", "Delay Time", 
                                 juce::NormalisableRange<float>(10.f, 10000.f, 0.f, 0.5f), 1000.f));
+
     layout.add(std::make_unique<juce::AudioParameterFloat>("feedback", "Feedback", 0.f, 1.f, 0.5f));
+
     layout.add(std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.f, 1.f, 0.5f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("outputGain", "Output Gain", 0.f, 2.f, 1.f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter0", "dummyParameter0", 0.f, 1.f, 0.5f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter1", "dummyParameter1", 0.f, 1.f, 0.5f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter2", "dummyParameter2", 0.f, 1.f, 0.5f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter3", "dummyParameter3", 0.f, 1.f, 0.5f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter4", "dummyParameter4", 0.f, 1.f, 0.5f));
+
     return layout;
 }
 

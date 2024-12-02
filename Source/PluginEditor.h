@@ -2,7 +2,6 @@
 
 #include "PluginProcessor.h"
 
-// Look and feel method here... (2:17:20 in video)
 struct LookAndFeel : juce::LookAndFeel_V4
 {
     void drawRotarySlider (juce::Graphics&,
@@ -31,13 +30,7 @@ struct CustomRotarySlider : juce::Slider
         setLookAndFeel(nullptr);
     }
 
-    struct LabelPos
-    {
-        float pos;
-        juce::String label;
-    };
-
-    juce::Array<LabelPos> labels;
+    juce::Array<juce::String> labels;
 
     void paint(juce::Graphics& g) override;
     juce::Rectangle<int> getSliderBounds() const;
@@ -69,24 +62,42 @@ private:
     // access the processor object that created it.
     GranularDelayAudioProcessor& processorRef;
 
+    // Create text components
+    juce::Label title;
+
     // Create control components
-    CustomRotarySlider gainSlider,
+    CustomRotarySlider inputGainSlider,
                        delayTimeSlider,
                        feedbackSlider,
-                       mixSlider;
+                       mixSlider,
+                       outputGainSlider,
+                       dummySlider0,
+                       dummySlider1,
+                       dummySlider2,
+                       dummySlider3,
+                       dummySlider4;
 
     // Function to get a vector of all components
     std::vector<juce::Component*> getComps();
+
+    // Function to get a vector of slider components
+    std::vector<juce::Component*> getSliders();
 
     // Type aliasing for readability
     using APVTS = juce::AudioProcessorValueTreeState;
     using Attachment = APVTS::SliderAttachment;
 
     // Create control Attachments 
-    Attachment gainSliderAttachment,
+    Attachment inputGainSliderAttachment,
                delayTimeSliderAttachment,
                feedbackSliderAttachment,
-               mixSliderAttachment;
+               mixSliderAttachment,
+               outputGainSliderAttachment,
+               dummySlider0Attachment,
+               dummySlider1Attachment,
+               dummySlider2Attachment,
+               dummySlider3Attachment,
+               dummySlider4Attachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GranularDelayAudioProcessorEditor)
 };

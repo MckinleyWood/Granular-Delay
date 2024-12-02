@@ -2,14 +2,20 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
-
+#include <juce_audio_utils/gui/juce_AudioVisualiserComponent.h>
 
 struct ChainSettings
 {
-    float gain;
+    float inputGain;
     float delayTime;
     float feedback;
     float mix;
+    float outputGain;
+    float dummyParameter0;
+    float dummyParameter1;
+    float dummyParameter2;
+    float dummyParameter3;
+    float dummyParameter4;
 };
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
@@ -58,6 +64,8 @@ public:
         createParameterLayout();
     juce::AudioProcessorValueTreeState apvts {*this, nullptr, 
         "Parameters", createParameterLayout()};
+
+    juce::AudioVisualiserComponent waveViewer;
 
 private:
     //==============================================================================
