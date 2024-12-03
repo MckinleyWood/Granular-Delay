@@ -91,7 +91,7 @@ void GranularDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesP
     delayBuffer.setSize(getTotalNumOutputChannels(), delayBufferSize);
     tempBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
 
-    // waveViewer.setBufferSize(???);
+    waveViewer.setSamplesPerBlock(delayBufferSize / 1024);
 }
 
 void GranularDelayAudioProcessor::releaseResources()
@@ -290,9 +290,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add(std::make_unique<juce::AudioParameterFloat>("inputGain", "Input Gain", 0.f, 2.f, 1.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("delayTime", "Delay Time", 
-                                juce::NormalisableRange<float>(10.f, 10000.f, 0.f, 0.5f), 1000.f));
+                                juce::NormalisableRange<float>(10.f, 10000.f, 0.f, 0.5f), 500.f));
 
-    layout.add(std::make_unique<juce::AudioParameterFloat>("feedback", "Feedback", 0.f, 1.f, 0.5f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("feedback", "Feedback", 0.f, 1.f, 0.8f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.f, 1.f, 0.5f));
 

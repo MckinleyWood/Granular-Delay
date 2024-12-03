@@ -38,8 +38,6 @@ void LookAndFeel::drawRotarySlider(juce::Graphics &g, int x, int y, int width, i
     }
 }
 
-//==============================================================================
-
 void CustomRotarySlider::paint(juce::Graphics &g)
 {
     using namespace juce;
@@ -138,11 +136,45 @@ juce::String CustomRotarySlider::getDisplayString() const
     return str;
 }
 
+
+//==============================================================================
+void DelayBar::paint(juce::Graphics &g)
+{
+    // Calculate delay position in samples
+    auto delayTimeMs = processorRef.apvts.getRawParameterValue("delayTime")->load();
+    auto feedback = processorRef.apvts.getRawParameterValue("feedback")->load();
+
+    auto widthSamples = static_cast<float>(10 * processorRef.getSampleRate());
+    auto delaySamples = static_cast<float>(delayTimeMs / 1000.f * processorRef.getSampleRate());
+
+    auto widthPixels = static_cast<float>(getWidth());
+    auto delayPixels = delaySamples / widthSamples * widthPixels;
+
+    auto barPosition = widthPixels - delayPixels;
+    auto opacity = feedback;
+
+    g.setColour(juce::Colours::white);
+    auto bounds = getLocalBounds();
+    auto r = juce::Rectangle<float>(2.f, bounds.getHeight());
+
+    while (barPosition > 0 && opacity > 0.01f)
+    {
+        g.setOpacity(opacity);
+        r.setCentre(barPosition, bounds.getCentreY());
+        g.fillRoundedRectangle(r, 1.f);
+
+        barPosition -= delayPixels;
+        opacity *= feedback;
+    }
+}
+
+
 //==============================================================================
 // Editor constructor!
 GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDelayAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p), 
 
+    delayBar(processorRef),
     inputGainSlider(*processorRef.apvts.getParameter("inputGain"), "%"),
     delayTimeSlider(*processorRef.apvts.getParameter("delayTime"), "ms"),
     feedbackSlider(*processorRef.apvts.getParameter("feedback"), "%"),
@@ -165,7 +197,7 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
     dummySlider3Attachment(processorRef.apvts, "", dummySlider3),
     dummySlider4Attachment(processorRef.apvts, "", dummySlider4)
 {
-    juce::ignoreUnused (processorRef);
+    processorRef.apvts.addParameterListener("delayTime", this);
 
     // Make all components visible
     for(auto* comp : getComps())
@@ -179,9 +211,18 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
 
 GranularDelayAudioProcessorEditor::~GranularDelayAudioProcessorEditor()
 {
+    processorRef.apvts.removeParameterListener("delayTime", this);
 }
 
 //==============================================================================
+void GranularDelayAudioProcessorEditor::parameterChanged(const juce::String& parameterID, float newValue)
+{
+    if (parameterID == "delayTime")
+    {
+        delayBar.repaint();  // Repaint to show the new delay time
+    }
+}
+
 void GranularDelayAudioProcessorEditor::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().reduced(10, 10);
@@ -205,16 +246,18 @@ void GranularDelayAudioProcessorEditor::paint (juce::Graphics& g)
     // {
     //     g.drawRect(comp->getBounds());
     // }
-
 }
 
 // This is where we set the boundaries of the components
 void GranularDelayAudioProcessorEditor::resized()
 {
     // Partition the editor into zones
-    auto bounds = getLocalBounds().reduced(10, 10);
+    auto bounds = getLocalBounds();
 
     auto titleZone = bounds.withTrimmedBottom(static_cast<int>(bounds.getHeight() * 0.9f));
+
+    bounds.reduce(10, 10);
+    
     auto waveViewerZone = bounds.withTrimmedTop(static_cast<int>(bounds.getHeight() * 0.1f))
                                 .withTrimmedBottom(static_cast<int>(bounds.getHeight() * 0.6f));
                                 // .withTrimmedLeft(static_cast<int>(bounds.getWidth() * 0.1f))
@@ -235,16 +278,18 @@ void GranularDelayAudioProcessorEditor::resized()
 
     for (int i = 0; i < 5; ++i)
     {
-        sliderBoxes.add(bottomRow.withTrimmedLeft(static_cast<int>(bottomRow.getWidth() * 0.2f * i))
-                                 .withTrimmedRight(static_cast<int>(bottomRow.getWidth() * 0.2f * (4 - i))));
+        // sliderBoxes.add(bottomRow.withTrimmedLeft(static_cast<int>(bottomRow.getWidth() * 0.2f * i))
+        //                          .withTrimmedRight(static_cast<int>(bottomRow.getWidth() * 0.2f * (4 - i))));
+        sliderBoxes.add(juce::Rectangle<int>());
     }
 
     // Set the bounds of the components
     title.setBounds(titleZone);
     processorRef.waveViewer.setBounds(waveViewerZone);
+    delayBar.setBounds(waveViewerZone);
 
     auto sliders = getSliders();
-    for(int i = 0; i < sliders.size(); ++i)
+    for(int i = 0; i < static_cast<int>(sliders.size()); ++i)
     {
         sliders[i]->setBounds(sliderBoxes[i]);
     }
@@ -254,6 +299,8 @@ void GranularDelayAudioProcessorEditor::resized()
 std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getComps()
 {
     return {&title,
+            &processorRef.waveViewer,
+            &delayBar,
             &inputGainSlider,
             &delayTimeSlider,
             &feedbackSlider,
@@ -263,8 +310,7 @@ std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getComps()
             &dummySlider1,
             &dummySlider2,
             &dummySlider3,
-            &dummySlider4,
-            &processorRef.waveViewer
+            &dummySlider4
             };
 }
 

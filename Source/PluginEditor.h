@@ -46,14 +46,30 @@ private:
     juce::String suffix;
 };
 
+
 //==============================================================================
-class GranularDelayAudioProcessorEditor final : public juce::AudioProcessorEditor
+struct DelayBar : juce::Component
+{
+    DelayBar(GranularDelayAudioProcessor& processor)
+        : processorRef(processor) {}
+
+    void paint(juce::Graphics& g) override;
+
+    private:
+        GranularDelayAudioProcessor& processorRef;
+};
+
+
+//==============================================================================
+class GranularDelayAudioProcessorEditor final : public juce::AudioProcessorEditor,
+                                                public juce::AudioProcessorValueTreeState::Listener
 {
 public:
     explicit GranularDelayAudioProcessorEditor (GranularDelayAudioProcessor&);
     ~GranularDelayAudioProcessorEditor() override;
 
     //==============================================================================
+    void parameterChanged(const juce::String& parameterID, float newValue) override;
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -65,7 +81,10 @@ private:
     // Create text components
     juce::Label title;
 
-    // Create control components
+    // Create delay bar
+    DelayBar delayBar;
+
+    // Create sliders
     CustomRotarySlider inputGainSlider,
                        delayTimeSlider,
                        feedbackSlider,
