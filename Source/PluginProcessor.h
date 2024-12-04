@@ -7,11 +7,11 @@
 struct ChainSettings
 {
     float inputGain;
-    float delayTime;
-    float feedback;
     float mix;
-    float outputGain;
-    float dummyParameter0;
+    float grainSize;
+    float frequency;
+    float rangeStart;
+    float rangeEnd;
     float dummyParameter1;
     float dummyParameter2;
     float dummyParameter3;
@@ -19,6 +19,13 @@ struct ChainSettings
 };
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
+
+//==============================================================================
+struct Grain
+{
+    juce::AudioBuffer<float> buffer;
+    int readPosition;
+};
 
 //==============================================================================
 class GranularDelayAudioProcessor final : public juce::AudioProcessor
@@ -70,14 +77,18 @@ public:
 private:
     //==============================================================================
     void fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float gain);
-    void readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float gain);
+    void readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, int readPosition, float gain);
     void updateWritePosition(juce::AudioBuffer<float>& buffer);
 
+    void addGrain();
+
     //==============================================================================
+    juce::TimedCallback timer;
+    std::vector<Grain> grainVector;
+
     juce::AudioBuffer<float> delayBuffer;
-    juce::AudioBuffer<float> tempBuffer;
+    juce::AudioBuffer<float> wetBuffer;
     int writePosition { 0 };
-    int readPosition { 0 };
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GranularDelayAudioProcessor)
