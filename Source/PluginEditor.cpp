@@ -180,22 +180,12 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
     feedbackSlider(*processorRef.apvts.getParameter("feedback"), "%"),
     mixSlider(*processorRef.apvts.getParameter("mix"), "%"),
     outputGainSlider(*processorRef.apvts.getParameter("outputGain"), "%"),
-    dummySlider0(*processorRef.apvts.getParameter("dummyParameter0"), ""),
-    dummySlider1(*processorRef.apvts.getParameter("dummyParameter1"), ""),
-    dummySlider2(*processorRef.apvts.getParameter("dummyParameter2"), ""),
-    dummySlider3(*processorRef.apvts.getParameter("dummyParameter3"), ""),
-    dummySlider4(*processorRef.apvts.getParameter("dummyParameter4"), ""),
 
     inputGainSliderAttachment(processorRef.apvts, "inputGain", inputGainSlider),
     delayTimeSliderAttachment(processorRef.apvts, "delayTime", delayTimeSlider),
     feedbackSliderAttachment(processorRef.apvts, "feedback", feedbackSlider),
     mixSliderAttachment(processorRef.apvts, "mix", mixSlider),
-    outputGainSliderAttachment(processorRef.apvts, "outputGain", outputGainSlider),
-    dummySlider0Attachment(processorRef.apvts, "", dummySlider0),
-    dummySlider1Attachment(processorRef.apvts, "", dummySlider1),
-    dummySlider2Attachment(processorRef.apvts, "", dummySlider2),
-    dummySlider3Attachment(processorRef.apvts, "", dummySlider3),
-    dummySlider4Attachment(processorRef.apvts, "", dummySlider4)
+    outputGainSliderAttachment(processorRef.apvts, "outputGain", outputGainSlider)
 {
     processorRef.apvts.addParameterListener("delayTime", this);
 
@@ -206,7 +196,7 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
     }
 
     // Set the size of the editor
-    setSize (620, 420);
+    setSize (620, 300);
 }
 
 GranularDelayAudioProcessorEditor::~GranularDelayAudioProcessorEditor()
@@ -225,14 +215,12 @@ void GranularDelayAudioProcessorEditor::parameterChanged(const juce::String& par
 
 void GranularDelayAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    auto bounds = getLocalBounds().reduced(10, 10);
-
     // Paint the background
     g.fillAll (juce::Colours::black);
 
     // Paint the title
-    g.setFont(bounds.getHeight() * 0.06f);
-    title.setText("Granular Delay", juce::dontSendNotification);
+    g.setFont(24);
+    title.setText("MW Delay", juce::dontSendNotification);
     title.setFont(g.getCurrentFont());
     title.setJustificationType(juce::Justification::centred);
     title.setColour(juce::Label::textColourId, juce::Colours::white);
@@ -254,33 +242,24 @@ void GranularDelayAudioProcessorEditor::resized()
     // Partition the editor into zones
     auto bounds = getLocalBounds();
 
-    auto titleZone = bounds.withTrimmedBottom(static_cast<int>(bounds.getHeight() * 0.9f));
+    auto titleZone = bounds.withTrimmedTop(5)
+                           .withTrimmedBottom(258);
 
     bounds.reduce(10, 10);
     
-    auto waveViewerZone = bounds.withTrimmedTop(static_cast<int>(bounds.getHeight() * 0.1f))
-                                .withTrimmedBottom(static_cast<int>(bounds.getHeight() * 0.6f));
-                                // .withTrimmedLeft(static_cast<int>(bounds.getWidth() * 0.1f))
-                                // .withTrimmedRight(static_cast<int>(bounds.getWidth() * 0.1f));
+    auto waveViewerZone = bounds.withTrimmedTop(40)
+                                .withTrimmedBottom(120);
 
-    auto sliderZone = bounds.withTrimmedTop(static_cast<int>(bounds.getHeight() * 0.4f));
+    auto sliderZone = bounds.withTrimmedTop(160);
 
     juce::Array<juce::Rectangle<int>> sliderBoxes;
     
-    auto topRow = sliderZone.withTrimmedBottom(static_cast<int>(sliderZone.getHeight() * 0.5f));
-    auto bottomRow = sliderZone.withTrimmedTop(static_cast<int>(sliderZone.getHeight() * 0.5f));
+    auto topRow = sliderZone;
     
     for (int i = 0; i < 5; ++i)
     {
         sliderBoxes.add(topRow.withTrimmedLeft(static_cast<int>(topRow.getWidth() * 0.2f * i))
                               .withTrimmedRight(static_cast<int>(topRow.getWidth() * 0.2f * (4 - i))));
-    }
-
-    for (int i = 0; i < 5; ++i)
-    {
-        // sliderBoxes.add(bottomRow.withTrimmedLeft(static_cast<int>(bottomRow.getWidth() * 0.2f * i))
-        //                          .withTrimmedRight(static_cast<int>(bottomRow.getWidth() * 0.2f * (4 - i))));
-        sliderBoxes.add(juce::Rectangle<int>());
     }
 
     // Set the bounds of the components
@@ -306,11 +285,6 @@ std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getComps()
             &feedbackSlider,
             &mixSlider,
             &outputGainSlider,
-            &dummySlider0,
-            &dummySlider1,
-            &dummySlider2,
-            &dummySlider3,
-            &dummySlider4
             };
 }
 
@@ -321,11 +295,6 @@ std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getSliders()
             &delayTimeSlider,
             &feedbackSlider,
             &mixSlider,
-            &outputGainSlider,
-            &dummySlider0,
-            &dummySlider1,
-            &dummySlider2,
-            &dummySlider3,
-            &dummySlider4
+            &outputGainSlider
             };
 }

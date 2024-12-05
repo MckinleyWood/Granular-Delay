@@ -11,11 +11,6 @@ struct ChainSettings
     float feedback;
     float mix;
     float outputGain;
-    float dummyParameter0;
-    float dummyParameter1;
-    float dummyParameter2;
-    float dummyParameter3;
-    float dummyParameter4;
 };
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);

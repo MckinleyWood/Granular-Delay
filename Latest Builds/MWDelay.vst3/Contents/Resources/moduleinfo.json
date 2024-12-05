@@ -1,0 +1,58 @@
+{
+  "Name": "MWDelay",
+  "Version": "0.0.1",
+  "Factory Info": {
+    "Vendor": "Mckinley Wood",
+    "URL": "",
+    "E-Mail": "",
+    "Flags": {
+      "Unicode": true,
+      "Classes Discardable": false,
+      "Component Non Discardable": false,
+    },
+  },
+  "Classes": [
+    {
+      "CID": "5653546D77446C6D772064656C617900",
+      "Category": "Audio Module Class",
+      "Name": "MW Delay",
+      "Vendor": "Mckinley Wood",
+      "Version": "0.0.1",
+      "SDKVersion": "VST 3.7.12",
+      "Sub Categories": [
+        "Fx",
+      ],
+      "Class Flags": 0,
+      "Cardinality": 2147483647,
+      "Snapshots": [
+      ],
+    },
+    {
+      "CID": "5653456D77446C6D772064656C617900",
+      "Category": "Component Controller Class",
+      "Name": "MW Delay",
+      "Vendor": "Mckinley Wood",
+      "Version": "0.0.1",
+      "SDKVersion": "VST 3.7.12",
+      "Sub Categories": [
+        "Fx",
+      ],
+      "Class Flags": 0,
+      "Cardinality": 2147483647,
+      "Snapshots": [
+      ],
+    },
+    {
+      "CID": "ABCDEF01C0DEF00D4D576F646D77446C",
+      "Category": "Plugin Compatibility Class",
+      "Name": "MW Delay",
+      "Vendor": "Mckinley Wood",
+      "Version": "0.0.1",
+      "SDKVersion": "VST 3.7.12",
+      "Class Flags": 0,
+      "Cardinality": 2147483647,
+      "Snapshots": [
+      ],
+    },
+  ],
+}

@@ -89,12 +89,7 @@ private:
                        delayTimeSlider,
                        feedbackSlider,
                        mixSlider,
-                       outputGainSlider,
-                       dummySlider0,
-                       dummySlider1,
-                       dummySlider2,
-                       dummySlider3,
-                       dummySlider4;
+                       outputGainSlider;
 
     // Function to get a vector of all components
     std::vector<juce::Component*> getComps();
@@ -111,12 +106,7 @@ private:
                delayTimeSliderAttachment,
                feedbackSliderAttachment,
                mixSliderAttachment,
-               outputGainSliderAttachment,
-               dummySlider0Attachment,
-               dummySlider1Attachment,
-               dummySlider2Attachment,
-               dummySlider3Attachment,
-               dummySlider4Attachment;
+               outputGainSliderAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GranularDelayAudioProcessorEditor)
 };

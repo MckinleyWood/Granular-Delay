@@ -272,11 +272,6 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
     settings.feedback = apvts.getRawParameterValue("feedback")->load();
     settings.mix = apvts.getRawParameterValue("mix")->load();
     settings.outputGain = apvts.getRawParameterValue("outputGain")->load();
-    settings.dummyParameter0 = apvts.getRawParameterValue("dummyParameter0")->load();
-    settings.dummyParameter1 = apvts.getRawParameterValue("dummyParameter1")->load();
-    settings.dummyParameter2 = apvts.getRawParameterValue("dummyParameter2")->load();
-    settings.dummyParameter3 = apvts.getRawParameterValue("dummyParameter3")->load();
-    settings.dummyParameter4 = apvts.getRawParameterValue("dummyParameter4")->load();
 
     return settings;
 }
@@ -297,16 +292,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add(std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.f, 1.f, 0.5f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("outputGain", "Output Gain", 0.f, 2.f, 1.f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter0", "dummyParameter0", 0.f, 1.f, 0.5f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter1", "dummyParameter1", 0.f, 1.f, 0.5f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter2", "dummyParameter2", 0.f, 1.f, 0.5f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter3", "dummyParameter3", 0.f, 1.f, 0.5f));
-
-    layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter4", "dummyParameter4", 0.f, 1.f, 0.5f));
 
     return layout;
 }
