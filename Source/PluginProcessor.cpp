@@ -1,63 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-/*
-ALGORITHM (pseudocode):
-
-Struct Grain:
-	audioBuffer buffer;
-    int readPosition;
-	
-
-period = k / Frequency
-startSamples = rangeStart * sampleRate / 1000.
-endSamples = rangeEnd * sampleRate / 1000.
-grainSizeSamples = grainSize * sampleRate / 1000.
-
-If timer > period : 
-	int minStartSample = (writePosition - startSamples) % delayBuffer.getNumSamples()
-	int maxStartSample = (writePosition - endSamples) % delayBuffer.getNumSamples()
-	int startSample = random(minStartSample, maxStartSample)
-	
-	auto grainBuffer = juce::AudioBuffer(2, grainSizeSamples);
-
-    for (int channel = 0; channel < 2; ++channel):
-        grainBuffer.copyFrom(destChannel = channel, destStartSample = 0, source = delayBuffer,
-                            sourceChannel = channel, sourceStartSample = startSample, numSamples = grainSizeSamples
-    
-    int fadeLengthSamples = sampleRate / 2000
-    grainBuffer.applyGainRamp(startSample = 0, numSamples = fadeLengthSamples, startGain = 0, endGain = 1)
-    grainBuffer.applyGainRamp(startSample = grainSizeSamples - fadeLengthSamples, numSamples = fadeLengthSamples, startGain = 1, endGain = 0)
-
-	Grain grain = Grain(grainBuffer)
-    grainVector.add(grain)
-
-...
-
-for (int i = grainVector.size() - 1; i >= 0; --i)
-{
-    auto grainBufferSize = grainVector[i].buffer.getNumSamples();
-    auto readPosition = grainVector[i].readPosition
-
-    int samplesToCopy = min(grainBufferSize - readPosition, mainBufferSize)
-    buffer.addFrom(destChannel = channel, destStartSample = readPosition, source = grain.buffer,
-                   numSamples = samplesToCopy, gainToApplyToSource = gain)
-
-    if (grainBufferSize - readPosition > mainBufferSize)
-        grainVector.readPosition += mainBufferSize
-    else
-    {
-        grainVector.erase(grainVector.begin() + i);
-    }
-}
-
-*/
-
-
-
-
-
-
 
 //==============================================================================
 GranularDelayAudioProcessor::GranularDelayAudioProcessor()
@@ -65,7 +8,7 @@ GranularDelayAudioProcessor::GranularDelayAudioProcessor()
                       .withInput  ("Input",  juce::AudioChannelSet::stereo())
                       .withOutput ("Output", juce::AudioChannelSet::stereo())),
                       apvts(*this, nullptr, "Parameters", createParameterLayout()),
-                      waveViewer(1), timer([this]() { addGrain(); })
+                      waveViewer(1), timer([this]() { timerCallback(); })
 {
     waveViewer.setRepaintRate(60);
     waveViewer.setBufferSize(1024);
@@ -192,7 +135,6 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
     auto totalNumInputChannels = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
     auto mainBufferSize = buffer.getNumSamples();
-    auto delayBufferSize = delayBuffer.getNumSamples();
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear(i, 0, buffer.getNumSamples());
@@ -202,30 +144,51 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
     float inputGain = chainSettings.inputGain;
     float mix = chainSettings.mix;
 
-    // Now we process!
+    if (grainRequested.load())
+    {
+        addGrain();
+        grainRequested.store(false);
+    }
+
+    wetBuffer.clear();
     buffer.applyGain(inputGain);
 
-    // Give the buffer to the wave viewer
+    // Give the buffer to the wave viewer 
     waveViewer.pushBuffer(buffer);
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {        
-        // // Apply delay effect... 
-        // // Copy the input signal to a temporary buffer
-        // wetBuffer.copyFrom(channel, 0, buffer.getWritePointer(channel), mainBufferSize);
+        // Copy the input buffer into the delayBuffer
+        fillDelayBuffer(buffer, channel, 1.f);
 
-        // // Add delayed signal (from readPosition) to temporary buffer
-        // readFromDelayBuffer(wetBuffer, channel, 1.f);
+        // Read from the grains into the wetBuffer
+        if (!grainVector.empty())
+        {
+            for (size_t i = grainVector.size() - 1; i >= 0; --i)
+            {
+                int grainBufferSize = grainVector[i].buffer.getNumSamples();
+                int readPosition = grainVector[i].readPosition;
 
-        // // Mix echoes with dry signal 
-        // buffer.applyGain(channel, 0, mainBufferSize, 1.f - mix);
-        // readFromDelayBuffer(buffer, channel, mix);
+                int samplesToCopy = juce::jmin(grainBufferSize - readPosition, mainBufferSize);
+                wetBuffer.addFrom(channel, 0, grainVector[i].buffer, channel, readPosition, samplesToCopy, 0.7f);
 
-        // // Copy the summed signal back to delayBuffer, apply feedback coefficient
-        // fillDelayBuffer(wetBuffer, channel, feedback);
+                if (grainBufferSize - readPosition > mainBufferSize)
+                {
+                    grainVector[i].readPosition += mainBufferSize;
+                }    
+                else
+                {
+                    grainVector.erase(grainVector.begin() + i);
+                }
+            }
+        }
+
+        // Mix echoes with dry signal 
+        buffer.applyGain(channel, 0, mainBufferSize, 1.f - mix);
+        buffer.addFrom(channel, 0, wetBuffer, channel, 0, mainBufferSize, mix);
     }
 
-    updateWritePosition(buffer);
+    updateWritePosition(mainBufferSize);
 }
 
 void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float gain)
@@ -274,31 +237,32 @@ void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& 
     }
 }
 
-void GranularDelayAudioProcessor::updateWritePosition(juce::AudioBuffer<float>& buffer)
+void GranularDelayAudioProcessor::updateWritePosition(int numSamples)
 {
-    writePosition += buffer.getNumSamples();
+    writePosition += numSamples;
     writePosition %= delayBuffer.getNumSamples();
 }
 
 // Adds a new grain to the grainVector, taking samples from the delayBuffer
 void GranularDelayAudioProcessor::addGrain()
 {
-    int sampleRate = getSampleRate();
+    int sampleRate = static_cast<int>(getSampleRate());
     auto chainSettings = getChainSettings(apvts);
     float grainSize = chainSettings.grainSize;
     float rangeStart = chainSettings.rangeStart;
     float rangeEnd = chainSettings.rangeEnd;
 
-    int startSamples = rangeStart * sampleRate / 1000;
-    int endSamples = rangeEnd * sampleRate / 1000;
-    int grainSizeSamples = grainSize * sampleRate / 1000;
+    int startSamples = static_cast<int>(rangeStart * sampleRate / 1000);
+    int endSamples = static_cast<int>(rangeEnd * sampleRate / 1000);
+    int grainSizeSamples = static_cast<int>(grainSize * sampleRate / 1000);
 
     int minStartSample = (writePosition - startSamples) % delayBuffer.getNumSamples();
 	int maxStartSample = (writePosition - endSamples) % delayBuffer.getNumSamples();
 
     // Get a random start point within the set range
     juce::Random random;
-	int startSample = juce::jmap(random.nextFloat(), 0.0f, 1.0f, (float)minStartSample, (float)maxStartSample);
+	int startSample = static_cast<int>(juce::jmap(random.nextFloat(), 0.0f, 1.0f, 
+                                                  (float)minStartSample, (float)maxStartSample));
 	
     // Copy audio from delayBuffer to new AudioBuffer
 	auto grainBuffer = juce::AudioBuffer<float>(2, grainSizeSamples);
@@ -306,7 +270,7 @@ void GranularDelayAudioProcessor::addGrain()
 
     for (int channel = 0; channel < getTotalNumInputChannels(); ++channel)
     {
-        readFromDelayBuffer(grainBuffer, channel, startSample, 0.7f);
+        readFromDelayBuffer(grainBuffer, channel, startSample, 1.f);
     }
     
     // Apply fade envelope to the grain buffer
@@ -321,6 +285,12 @@ void GranularDelayAudioProcessor::addGrain()
 
     grainVector.push_back(grain);
 }
+
+void GranularDelayAudioProcessor::timerCallback()
+{
+    grainRequested.store(true);
+}
+
 
 //==============================================================================
 bool GranularDelayAudioProcessor::hasEditor() const
@@ -405,15 +375,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter4", "dummyParameter4", 0.f, 1.f, 0.5f));
 
     return layout;
-
-    // Input (or output) (or both) Gain (db or linear)
-    // Mix (0% - 50% - 100%)
-    // Grain Size (1ms - ?ms - 100ms)
-    // Frequency (1/s - 100/s)
-    // Range Start (0ms - 9s)
-    // Range End (100ms - 10s)
-    // Grain Volume (linear)
-    // Pitch (do this later)
 }
 
 //==============================================================================

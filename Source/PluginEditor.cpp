@@ -104,7 +104,7 @@ juce::String CustomRotarySlider::getDisplayString() const
         float val = (float)getValue();
         juce::String id = getParameterID();
 
-        if (id == "delayTime")
+        if (suffix == "ms")
         {
             if (val >= 1000.f)
             {
@@ -140,32 +140,32 @@ juce::String CustomRotarySlider::getDisplayString() const
 //==============================================================================
 void DelayBar::paint(juce::Graphics &g)
 {
-    // Calculate delay position in samples
-    auto delayTimeMs = processorRef.apvts.getRawParameterValue("delayTime")->load();
-    auto feedback = processorRef.apvts.getRawParameterValue("feedback")->load();
+    // // Calculate delay position in samples
+    // auto mixMs = processorRef.apvts.getRawParameterValue("mix")->load();
+    // auto grainSize = processorRef.apvts.getRawParameterValue("grainSize")->load();
 
-    auto widthSamples = static_cast<float>(10 * processorRef.getSampleRate());
-    auto delaySamples = static_cast<float>(delayTimeMs / 1000.f * processorRef.getSampleRate());
+    // auto widthSamples = static_cast<float>(10 * processorRef.getSampleRate());
+    // auto delaySamples = static_cast<float>(mixMs / 1000.f * processorRef.getSampleRate());
 
-    auto widthPixels = static_cast<float>(getWidth());
-    auto delayPixels = delaySamples / widthSamples * widthPixels;
+    // auto widthPixels = static_cast<float>(getWidth());
+    // auto delayPixels = delaySamples / widthSamples * widthPixels;
 
-    auto barPosition = widthPixels - delayPixels;
-    auto opacity = feedback;
+    // auto barPosition = widthPixels - delayPixels;
+    // auto opacity = grainSize;
 
-    g.setColour(juce::Colours::white);
-    auto bounds = getLocalBounds();
-    auto r = juce::Rectangle<float>(2.f, bounds.getHeight());
+    // g.setColour(juce::Colours::white);
+    // auto bounds = getLocalBounds();
+    // auto r = juce::Rectangle<float>(2.f, bounds.getHeight());
 
-    while (barPosition > 0 && opacity > 0.01f)
-    {
-        g.setOpacity(opacity);
-        r.setCentre(barPosition, bounds.getCentreY());
-        g.fillRoundedRectangle(r, 1.f);
+    // while (barPosition > 0 && opacity > 0.01f)
+    // {
+    //     g.setOpacity(opacity);
+    //     r.setCentre(barPosition, bounds.getCentreY());
+    //     g.fillRoundedRectangle(r, 1.f);
 
-        barPosition -= delayPixels;
-        opacity *= feedback;
-    }
+    //     barPosition -= delayPixels;
+    //     opacity *= grainSize;
+    // }
 }
 
 
@@ -176,28 +176,28 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
 
     delayBar(processorRef),
     inputGainSlider(*processorRef.apvts.getParameter("inputGain"), "%"),
-    delayTimeSlider(*processorRef.apvts.getParameter("delayTime"), "ms"),
-    feedbackSlider(*processorRef.apvts.getParameter("feedback"), "%"),
     mixSlider(*processorRef.apvts.getParameter("mix"), "%"),
-    outputGainSlider(*processorRef.apvts.getParameter("outputGain"), "%"),
-    dummySlider0(*processorRef.apvts.getParameter("dummyParameter0"), ""),
+    grainSizeSlider(*processorRef.apvts.getParameter("grainSize"), "ms"),
+    frequencySlider(*processorRef.apvts.getParameter("frequency"), "/s"),
+    rangeStartSlider(*processorRef.apvts.getParameter("rangeStart"), "ms"),
+    rangeEndSlider(*processorRef.apvts.getParameter("rangeEnd"), "ms"),
     dummySlider1(*processorRef.apvts.getParameter("dummyParameter1"), ""),
     dummySlider2(*processorRef.apvts.getParameter("dummyParameter2"), ""),
     dummySlider3(*processorRef.apvts.getParameter("dummyParameter3"), ""),
     dummySlider4(*processorRef.apvts.getParameter("dummyParameter4"), ""),
 
     inputGainSliderAttachment(processorRef.apvts, "inputGain", inputGainSlider),
-    delayTimeSliderAttachment(processorRef.apvts, "delayTime", delayTimeSlider),
-    feedbackSliderAttachment(processorRef.apvts, "feedback", feedbackSlider),
     mixSliderAttachment(processorRef.apvts, "mix", mixSlider),
-    outputGainSliderAttachment(processorRef.apvts, "outputGain", outputGainSlider),
-    dummySlider0Attachment(processorRef.apvts, "", dummySlider0),
+    grainSizeSliderAttachment(processorRef.apvts, "grainSize", grainSizeSlider),
+    frequencySliderAttachment(processorRef.apvts, "frequency", frequencySlider),
+    rangeStartSliderAttachment(processorRef.apvts, "rangeStart", rangeStartSlider),
+    rangeEndSliderAttachment(processorRef.apvts, "rangeEnd", rangeEndSlider),
     dummySlider1Attachment(processorRef.apvts, "", dummySlider1),
     dummySlider2Attachment(processorRef.apvts, "", dummySlider2),
     dummySlider3Attachment(processorRef.apvts, "", dummySlider3),
     dummySlider4Attachment(processorRef.apvts, "", dummySlider4)
 {
-    processorRef.apvts.addParameterListener("delayTime", this);
+    processorRef.apvts.addParameterListener("mix", this);
 
     // Make all components visible
     for(auto* comp : getComps())
@@ -211,13 +211,13 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
 
 GranularDelayAudioProcessorEditor::~GranularDelayAudioProcessorEditor()
 {
-    processorRef.apvts.removeParameterListener("delayTime", this);
+    processorRef.apvts.removeParameterListener("mix", this);
 }
 
 //==============================================================================
 void GranularDelayAudioProcessorEditor::parameterChanged(const juce::String& parameterID, float newValue)
 {
-    if (parameterID == "delayTime")
+    if (parameterID == "mix")
     {
         delayBar.repaint();  // Repaint to show the new delay time
     }
@@ -278,9 +278,8 @@ void GranularDelayAudioProcessorEditor::resized()
 
     for (int i = 0; i < 5; ++i)
     {
-        // sliderBoxes.add(bottomRow.withTrimmedLeft(static_cast<int>(bottomRow.getWidth() * 0.2f * i))
-        //                          .withTrimmedRight(static_cast<int>(bottomRow.getWidth() * 0.2f * (4 - i))));
-        sliderBoxes.add(juce::Rectangle<int>());
+        sliderBoxes.add(bottomRow.withTrimmedLeft(static_cast<int>(bottomRow.getWidth() * 0.2f * i))
+                                 .withTrimmedRight(static_cast<int>(bottomRow.getWidth() * 0.2f * (4 - i))));
     }
 
     // Set the bounds of the components
@@ -289,7 +288,7 @@ void GranularDelayAudioProcessorEditor::resized()
     delayBar.setBounds(waveViewerZone);
 
     auto sliders = getSliders();
-    for(int i = 0; i < static_cast<int>(sliders.size()); ++i)
+    for(size_t i = 0; i < sliders.size(); ++i)
     {
         sliders[i]->setBounds(sliderBoxes[i]);
     }
@@ -302,11 +301,11 @@ std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getComps()
             &processorRef.waveViewer,
             &delayBar,
             &inputGainSlider,
-            &delayTimeSlider,
-            &feedbackSlider,
+            &frequencySlider,
+            &grainSizeSlider,
             &mixSlider,
-            &outputGainSlider,
-            &dummySlider0,
+            &rangeStartSlider,
+            &rangeEndSlider,
             &dummySlider1,
             &dummySlider2,
             &dummySlider3,
@@ -318,11 +317,11 @@ std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getComps()
 std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getSliders()
 {
     return {&inputGainSlider,
-            &delayTimeSlider,
-            &feedbackSlider,
             &mixSlider,
-            &outputGainSlider,
-            &dummySlider0,
+            &grainSizeSlider,
+            &frequencySlider,
+            &rangeStartSlider,
+            &rangeEndSlider,
             &dummySlider1,
             &dummySlider2,
             &dummySlider3,

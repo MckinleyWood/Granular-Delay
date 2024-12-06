@@ -78,9 +78,10 @@ private:
     //==============================================================================
     void fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float gain);
     void readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, int readPosition, float gain);
-    void updateWritePosition(juce::AudioBuffer<float>& buffer);
-
+    void updateWritePosition(int numSamples);
     void addGrain();
+
+    void timerCallback();
 
     //==============================================================================
     juce::TimedCallback timer;
@@ -88,6 +89,7 @@ private:
 
     juce::AudioBuffer<float> delayBuffer;
     juce::AudioBuffer<float> wetBuffer;
+    std::atomic<bool> grainRequested { false };
     int writePosition { 0 };
 
     //==============================================================================

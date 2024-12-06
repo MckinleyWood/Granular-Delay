@@ -86,11 +86,11 @@ private:
 
     // Create sliders
     CustomRotarySlider inputGainSlider,
-                       delayTimeSlider,
-                       feedbackSlider,
                        mixSlider,
-                       outputGainSlider,
-                       dummySlider0,
+                       grainSizeSlider,
+                       frequencySlider,
+                       rangeStartSlider,
+                       rangeEndSlider,
                        dummySlider1,
                        dummySlider2,
                        dummySlider3,
@@ -108,11 +108,11 @@ private:
 
     // Create control Attachments 
     Attachment inputGainSliderAttachment,
-               delayTimeSliderAttachment,
-               feedbackSliderAttachment,
                mixSliderAttachment,
-               outputGainSliderAttachment,
-               dummySlider0Attachment,
+               grainSizeSliderAttachment,
+               frequencySliderAttachment,
+               rangeStartSliderAttachment,
+               rangeEndSliderAttachment,
                dummySlider1Attachment,
                dummySlider2Attachment,
                dummySlider3Attachment,
