@@ -1,6 +1,17 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+/*
+
+TODO:
+
+    0. Add range visualization - done
+    1. Stop rangeStart, rangeEnd, and grainSize from having conflicting values - done
+        ensure rangeStart >= grainSize, rangeEnd >= rangeStart
+    2. Add new parameters: Pitch? Varaiable grain size? Playback speed?
+    3. Add delayBar visualization
+
+*/
 
 //==============================================================================
 GranularDelayAudioProcessor::GranularDelayAudioProcessor()
@@ -380,10 +391,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout
                                 juce::NormalisableRange<float>(1.f, 100.f, 0.f, 0.5f), 50.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("rangeStart", "Range Start",
-                                juce::NormalisableRange<float>(0.f, 9000.f, 0.f, 0.5f), 100.f));
+                                juce::NormalisableRange<float>(0.f, 10000.f, 0.f, 0.5f), 100.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("rangeEnd", "Range End",
-                                juce::NormalisableRange<float>(10.f, 10000.f, 0.f, 0.5f), 1000.f));
+                                juce::NormalisableRange<float>(0.f, 10000.f, 0.f, 0.5f), 1000.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("dummyParameter1", "dummyParameter1", 0.f, 1.f, 0.5f));
 

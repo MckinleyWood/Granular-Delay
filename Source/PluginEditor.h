@@ -61,6 +61,23 @@ struct DelayBar : juce::Component
 
 
 //==============================================================================
+class RangeVisualiser : public juce::Component
+{
+public:
+    RangeVisualiser() = default;
+
+    void setStart(float newStart) { rangeStartMs = newStart; }
+    void setEnd(float newEnd) { rangeEndMs = newEnd; }
+    float getStart() { return rangeStartMs; }
+    float getEnd() { return rangeEndMs; }
+    void paint(juce::Graphics& g) override;
+
+private:
+    float rangeStartMs = 100.f;
+    float rangeEndMs = 1000.f;
+};
+
+//==============================================================================
 class GranularDelayAudioProcessorEditor final : public juce::AudioProcessorEditor,
                                                 public juce::AudioProcessorValueTreeState::Listener
 {
@@ -78,11 +95,8 @@ private:
     // access the processor object that created it.
     GranularDelayAudioProcessor& processorRef;
 
-    // Create text components
     juce::Label title;
-
-    // Create delay bar
-    DelayBar delayBar;
+    RangeVisualiser rangeVisualizer;
 
     // Create sliders
     CustomRotarySlider inputGainSlider,

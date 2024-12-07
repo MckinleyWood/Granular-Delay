@@ -170,11 +170,28 @@ void DelayBar::paint(juce::Graphics &g)
 
 
 //==============================================================================
+void RangeVisualiser::paint(juce::Graphics &g)
+{
+    jassert(rangeStartMs <= rangeEndMs);
+    g.fillAll(juce::Colours::transparentBlack);
+
+    auto bounds = getLocalBounds();
+    float startXProportional = 1.f - juce::jmap(rangeStartMs, 0.f, 10000.f, 0.f, 1.f);
+    float endXProportional = 1.f - juce::jmap(rangeEndMs, 0.f, 10000.f, 0.f, 1.f);
+    float startX = startXProportional * bounds.getWidth();
+    float endX = endXProportional * bounds.getWidth();
+    juce::Rectangle<float> range(endX, 0.f, startX - endX, bounds.getHeight());
+    
+    g.setColour(juce::Colours::white.withAlpha(0.5f));
+    g.fillRoundedRectangle(range, 2.f);
+}
+
+
+//==============================================================================
 // Editor constructor!
 GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDelayAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p), 
 
-    delayBar(processorRef),
     inputGainSlider(*processorRef.apvts.getParameter("inputGain"), "%"),
     mixSlider(*processorRef.apvts.getParameter("mix"), "%"),
     grainSizeSlider(*processorRef.apvts.getParameter("grainSize"), "ms"),
@@ -197,7 +214,40 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
     dummySlider3Attachment(processorRef.apvts, "dummyParameter3", dummySlider3),
     dummySlider4Attachment(processorRef.apvts, "dummyParameter4", dummySlider4)
 {
-    processorRef.apvts.addParameterListener("mix", this);
+    processorRef.apvts.addParameterListener("rangeStart", this);
+    processorRef.apvts.addParameterListener("rangeEnd", this);
+
+    grainSizeSlider.onValueChange = [this]()
+    {
+        auto grainSize = grainSizeSlider.getValue();
+        auto rangeStart = rangeStartSlider.getValue();
+
+        if (grainSize > rangeStart) // Enforce constraints
+            grainSizeSlider.setValue(rangeStart);
+    };
+
+    rangeStartSlider.onValueChange = [this]()
+    {
+        auto grainSize = grainSizeSlider.getValue();
+        auto rangeStart = rangeStartSlider.getValue();
+        auto rangeEnd = rangeEndSlider.getValue();
+
+        if (rangeStart < grainSize)
+            rangeStartSlider.setValue(grainSize); 
+
+        if (rangeStart > rangeEnd)
+            rangeStartSlider.setValue(rangeEnd);
+    };
+
+    rangeEndSlider.onValueChange = [this]()
+    {
+        auto rangeStart = rangeStartSlider.getValue();
+        auto rangeEnd = rangeEndSlider.getValue();
+
+        if (rangeEnd < rangeStart)
+            rangeEndSlider.setValue(rangeStart);
+    };
+
 
     // Make all components visible
     for(auto* comp : getComps())
@@ -217,9 +267,15 @@ GranularDelayAudioProcessorEditor::~GranularDelayAudioProcessorEditor()
 //==============================================================================
 void GranularDelayAudioProcessorEditor::parameterChanged(const juce::String& parameterID, float newValue)
 {
-    if (parameterID == "mix")
+    if (parameterID == "rangeStart")
     {
-        delayBar.repaint();  // Repaint to show the new delay time
+        rangeVisualizer.setStart(newValue);
+        rangeVisualizer.repaint();  // Repaint to show the new range
+    }
+    else if (parameterID == "rangeEnd")
+    {
+        rangeVisualizer.setEnd(newValue);
+        rangeVisualizer.repaint();  // Repaint to show the new range
     }
 }
 
@@ -285,7 +341,7 @@ void GranularDelayAudioProcessorEditor::resized()
     // Set the bounds of the components
     title.setBounds(titleZone);
     processorRef.waveViewer.setBounds(waveViewerZone);
-    delayBar.setBounds(waveViewerZone);
+    rangeVisualizer.setBounds(waveViewerZone);
 
     auto sliders = getSliders();
     for(size_t i = 0; i < sliders.size(); ++i)
@@ -299,7 +355,7 @@ std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getComps()
 {
     return {&title,
             &processorRef.waveViewer,
-            &delayBar,
+            &rangeVisualizer,
             &inputGainSlider,
             &frequencySlider,
             &grainSizeSlider,
