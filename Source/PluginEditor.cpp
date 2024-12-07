@@ -192,10 +192,10 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
     frequencySliderAttachment(processorRef.apvts, "frequency", frequencySlider),
     rangeStartSliderAttachment(processorRef.apvts, "rangeStart", rangeStartSlider),
     rangeEndSliderAttachment(processorRef.apvts, "rangeEnd", rangeEndSlider),
-    dummySlider1Attachment(processorRef.apvts, "", dummySlider1),
-    dummySlider2Attachment(processorRef.apvts, "", dummySlider2),
-    dummySlider3Attachment(processorRef.apvts, "", dummySlider3),
-    dummySlider4Attachment(processorRef.apvts, "", dummySlider4)
+    dummySlider1Attachment(processorRef.apvts, "dummyParameter1", dummySlider1),
+    dummySlider2Attachment(processorRef.apvts, "dummyParameter2", dummySlider2),
+    dummySlider3Attachment(processorRef.apvts, "dummyParameter3", dummySlider3),
+    dummySlider4Attachment(processorRef.apvts, "dummyParameter4", dummySlider4)
 {
     processorRef.apvts.addParameterListener("mix", this);
 
@@ -265,21 +265,21 @@ void GranularDelayAudioProcessorEditor::resized()
 
     auto sliderZone = bounds.withTrimmedTop(static_cast<int>(bounds.getHeight() * 0.4f));
 
-    juce::Array<juce::Rectangle<int>> sliderBoxes;
+    std::vector<juce::Rectangle<int>> sliderBoxes;
     
     auto topRow = sliderZone.withTrimmedBottom(static_cast<int>(sliderZone.getHeight() * 0.5f));
     auto bottomRow = sliderZone.withTrimmedTop(static_cast<int>(sliderZone.getHeight() * 0.5f));
     
     for (int i = 0; i < 5; ++i)
     {
-        sliderBoxes.add(topRow.withTrimmedLeft(static_cast<int>(topRow.getWidth() * 0.2f * i))
-                              .withTrimmedRight(static_cast<int>(topRow.getWidth() * 0.2f * (4 - i))));
+        sliderBoxes.push_back(topRow.withTrimmedLeft(static_cast<int>(topRow.getWidth() * 0.2f * i))
+                                    .withTrimmedRight(static_cast<int>(topRow.getWidth() * 0.2f * (4 - i))));
     }
 
     for (int i = 0; i < 5; ++i)
     {
-        sliderBoxes.add(bottomRow.withTrimmedLeft(static_cast<int>(bottomRow.getWidth() * 0.2f * i))
-                                 .withTrimmedRight(static_cast<int>(bottomRow.getWidth() * 0.2f * (4 - i))));
+        sliderBoxes.push_back(bottomRow.withTrimmedLeft(static_cast<int>(bottomRow.getWidth() * 0.2f * i))
+                                       .withTrimmedRight(static_cast<int>(bottomRow.getWidth() * 0.2f * (4 - i))));
     }
 
     // Set the bounds of the components

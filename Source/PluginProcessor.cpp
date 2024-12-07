@@ -93,6 +93,10 @@ void GranularDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesP
     wetBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
 
     waveViewer.setSamplesPerBlock(delayBufferSize / 1024);
+
+    timer.startTimer(10);
+
+    DBG("Plugin set up!");
 }
 
 void GranularDelayAudioProcessor::releaseResources()
@@ -128,6 +132,7 @@ bool GranularDelayAudioProcessor::isBusesLayoutSupported (const BusesLayout& lay
 void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                                 juce::MidiBuffer& midiMessages)
 {
+    DBG("Processing a block!");
     juce::ignoreUnused(midiMessages);
 
     juce::ScopedNoDenormals noDenormals;
@@ -143,10 +148,16 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
     auto chainSettings = getChainSettings(apvts);
     float inputGain = chainSettings.inputGain;
     float mix = chainSettings.mix;
+    float frequency = chainSettings.frequency;
+
+    int interval = static_cast<int>(1000 / frequency);
+    timerInterval = interval;
 
     if (grainRequested.load())
     {
+        DBG("Grain requested!");
         addGrain();
+        DBG("Grain added!");
         grainRequested.store(false);
     }
 
@@ -164,8 +175,11 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
         // Read from the grains into the wetBuffer
         if (!grainVector.empty())
         {
-            for (size_t i = grainVector.size() - 1; i >= 0; --i)
+            DBG("Reading grains...");
+            DBG("grainVector Size = " << grainVector.size());
+            for (size_t i = grainVector.size() - 1; i-- > 0;)
             {
+                DBG("Processing grain #" << i);
                 int grainBufferSize = grainVector[i].buffer.getNumSamples();
                 int readPosition = grainVector[i].readPosition;
 
@@ -179,6 +193,7 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
                 else
                 {
                     grainVector.erase(grainVector.begin() + i);
+                    DBG("Grain removed!");
                 }
             }
         }
@@ -195,9 +210,11 @@ void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buff
 {   
     auto bufferSize = buffer.getNumSamples();
     auto delayBufferSize = delayBuffer.getNumSamples();
+    // DBG("bufferSize = " << bufferSize);
+
 
     // Check if there is enough room for full buffer in delayBuffer
-    if (delayBufferSize > bufferSize + writePosition)
+    if (delayBufferSize >= bufferSize + writePosition)
     {
         // If so, copy entire buffer over
         delayBuffer.copyFrom(channel, writePosition, buffer.getWritePointer(channel), bufferSize, gain);
@@ -247,6 +264,7 @@ void GranularDelayAudioProcessor::updateWritePosition(int numSamples)
 void GranularDelayAudioProcessor::addGrain()
 {
     int sampleRate = static_cast<int>(getSampleRate());
+    int delayBufferSize = delayBuffer.getNumSamples();
     auto chainSettings = getChainSettings(apvts);
     float grainSize = chainSettings.grainSize;
     float rangeStart = chainSettings.rangeStart;
@@ -256,8 +274,8 @@ void GranularDelayAudioProcessor::addGrain()
     int endSamples = static_cast<int>(rangeEnd * sampleRate / 1000);
     int grainSizeSamples = static_cast<int>(grainSize * sampleRate / 1000);
 
-    int minStartSample = (writePosition - startSamples) % delayBuffer.getNumSamples();
-	int maxStartSample = (writePosition - endSamples) % delayBuffer.getNumSamples();
+    int minStartSample = (writePosition - startSamples + delayBufferSize) % delayBufferSize;
+	int maxStartSample = (writePosition - endSamples + delayBufferSize) % delayBufferSize;
 
     // Get a random start point within the set range
     juce::Random random;
@@ -289,6 +307,7 @@ void GranularDelayAudioProcessor::addGrain()
 void GranularDelayAudioProcessor::timerCallback()
 {
     grainRequested.store(true);
+    timer.startTimer(timerInterval);
 }
 
 
@@ -355,10 +374,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add(std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.f, 1.f, 0.5f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("grainSize", "Grain Size", 
-                                juce::NormalisableRange<float>(1.f, 100.f, 0.f, 0.5f), 10.f));
+                                juce::NormalisableRange<float>(1.f, 100.f, 0.f, 0.5f), 50.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("frequency", "Frequency", 
-                                juce::NormalisableRange<float>(1.f, 100.f, 0.f, 0.5f), 10.f));
+                                juce::NormalisableRange<float>(1.f, 100.f, 0.f, 0.5f), 50.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("rangeStart", "Range Start",
                                 juce::NormalisableRange<float>(0.f, 9000.f, 0.f, 0.5f), 100.f));

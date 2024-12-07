@@ -90,6 +90,7 @@ private:
     juce::AudioBuffer<float> delayBuffer;
     juce::AudioBuffer<float> wetBuffer;
     std::atomic<bool> grainRequested { false };
+    std::atomic<int> timerInterval { 10 };
     int writePosition { 0 };
 
     //==============================================================================
