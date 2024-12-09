@@ -12,10 +12,10 @@ struct ChainSettings
     float frequency;
     float rangeStart;
     float rangeEnd;
-    float dummyParameter1;
-    float dummyParameter2;
-    float dummyParameter3;
-    float dummyParameter4;
+    float grainPitch;
+    float detune;
+    float dummy2;
+    float dummy4;
 };
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
@@ -78,8 +78,11 @@ private:
     //==============================================================================
     void fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float gain);
     void readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, int readPosition, float gain);
+    void readGrains(juce::AudioBuffer<float>& buffer, int channel);
     void updateWritePosition(int numSamples);
     void addGrain();
+    float getGrainStartSample();
+    void fillGrainBuffer(juce::AudioBuffer<float>& grainBuffer, int channel, float startSample, float pitch);
 
     void timerCallback();
 

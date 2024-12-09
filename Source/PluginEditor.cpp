@@ -2,7 +2,6 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-
 void LookAndFeel::drawRotarySlider(juce::Graphics &g, int x, int y, int width, int height,
                                    float sliderPosProportional, float rotaryStartAngle,
                                    float rotaryEndAngle, juce::Slider &slider)
@@ -79,7 +78,7 @@ void CustomRotarySlider::paint(juce::Graphics &g)
     g.drawFittedText(str, r.toNearestInt(), Justification::centred, 1);
 }
 
-// Returns the bounds of the slider within the slider component
+// Returns the bounds of the visible slider within the slider component
 juce::Rectangle<int> CustomRotarySlider::getSliderBounds() const
 {
     // Small sliders
@@ -138,35 +137,35 @@ juce::String CustomRotarySlider::getDisplayString() const
 
 
 //==============================================================================
-void DelayBar::paint(juce::Graphics &g)
-{
-    // // Calculate delay position in samples
-    // auto mixMs = processorRef.apvts.getRawParameterValue("mix")->load();
-    // auto grainSize = processorRef.apvts.getRawParameterValue("grainSize")->load();
+// void DelayBar::paint(juce::Graphics &g)
+// {
+//     // Calculate delay position in samples
+//     auto mixMs = processorRef.apvts.getRawParameterValue("mix")->load();
+//     auto grainSize = processorRef.apvts.getRawParameterValue("grainSize")->load();
 
-    // auto widthSamples = static_cast<float>(10 * processorRef.getSampleRate());
-    // auto delaySamples = static_cast<float>(mixMs / 1000.f * processorRef.getSampleRate());
+//     auto widthSamples = static_cast<float>(10 * processorRef.getSampleRate());
+//     auto delaySamples = static_cast<float>(mixMs / 1000.f * processorRef.getSampleRate());
 
-    // auto widthPixels = static_cast<float>(getWidth());
-    // auto delayPixels = delaySamples / widthSamples * widthPixels;
+//     auto widthPixels = static_cast<float>(getWidth());
+//     auto delayPixels = delaySamples / widthSamples * widthPixels;
 
-    // auto barPosition = widthPixels - delayPixels;
-    // auto opacity = grainSize;
+//     auto barPosition = widthPixels - delayPixels;
+//     auto opacity = grainSize;
 
-    // g.setColour(juce::Colours::white);
-    // auto bounds = getLocalBounds();
-    // auto r = juce::Rectangle<float>(2.f, bounds.getHeight());
+//     g.setColour(juce::Colours::white);
+//     auto bounds = getLocalBounds();
+//     auto r = juce::Rectangle<float>(2.f, bounds.getHeight());
 
-    // while (barPosition > 0 && opacity > 0.01f)
-    // {
-    //     g.setOpacity(opacity);
-    //     r.setCentre(barPosition, bounds.getCentreY());
-    //     g.fillRoundedRectangle(r, 1.f);
+//     while (barPosition > 0 && opacity > 0.01f)
+//     {
+//         g.setOpacity(opacity);
+//         r.setCentre(barPosition, bounds.getCentreY());
+//         g.fillRoundedRectangle(r, 1.f);
 
-    //     barPosition -= delayPixels;
-    //     opacity *= grainSize;
-    // }
-}
+//         barPosition -= delayPixels;
+//         opacity *= grainSize;
+//     }
+// }
 
 
 //==============================================================================
@@ -181,6 +180,8 @@ void RangeVisualiser::paint(juce::Graphics &g)
     float startX = startXProportional * bounds.getWidth();
     float endX = endXProportional * bounds.getWidth();
     juce::Rectangle<float> range(endX, 0.f, startX - endX, bounds.getHeight());
+    if (range.getWidth() < 4.f)
+        range.setWidth(4.f);
     
     g.setColour(juce::Colours::white.withAlpha(0.5f));
     g.fillRoundedRectangle(range, 2.f);
@@ -191,6 +192,8 @@ void RangeVisualiser::paint(juce::Graphics &g)
 // Editor constructor!
 GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDelayAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p), 
+    rangeVisualizer(*processorRef.apvts.getRawParameterValue("rangeStart"),
+                    *processorRef.apvts.getRawParameterValue("rangeEnd")),
 
     inputGainSlider(*processorRef.apvts.getParameter("inputGain"), "%"),
     mixSlider(*processorRef.apvts.getParameter("mix"), "%"),
@@ -198,10 +201,10 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
     frequencySlider(*processorRef.apvts.getParameter("frequency"), "/s"),
     rangeStartSlider(*processorRef.apvts.getParameter("rangeStart"), "ms"),
     rangeEndSlider(*processorRef.apvts.getParameter("rangeEnd"), "ms"),
-    dummySlider1(*processorRef.apvts.getParameter("dummyParameter1"), ""),
-    dummySlider2(*processorRef.apvts.getParameter("dummyParameter2"), ""),
-    dummySlider3(*processorRef.apvts.getParameter("dummyParameter3"), ""),
-    dummySlider4(*processorRef.apvts.getParameter("dummyParameter4"), ""),
+    pitchSlider(*processorRef.apvts.getParameter("grainPitch"), "x"),
+    dummy2Slider(*processorRef.apvts.getParameter("dummy2"), ""),
+    detuneSlider(*processorRef.apvts.getParameter("detune"), "c"),
+    dummy4Slider(*processorRef.apvts.getParameter("dummy4"), ""),
 
     inputGainSliderAttachment(processorRef.apvts, "inputGain", inputGainSlider),
     mixSliderAttachment(processorRef.apvts, "mix", mixSlider),
@@ -209,10 +212,10 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
     frequencySliderAttachment(processorRef.apvts, "frequency", frequencySlider),
     rangeStartSliderAttachment(processorRef.apvts, "rangeStart", rangeStartSlider),
     rangeEndSliderAttachment(processorRef.apvts, "rangeEnd", rangeEndSlider),
-    dummySlider1Attachment(processorRef.apvts, "dummyParameter1", dummySlider1),
-    dummySlider2Attachment(processorRef.apvts, "dummyParameter2", dummySlider2),
-    dummySlider3Attachment(processorRef.apvts, "dummyParameter3", dummySlider3),
-    dummySlider4Attachment(processorRef.apvts, "dummyParameter4", dummySlider4)
+    pitchSliderAttachment(processorRef.apvts, "grainPitch", pitchSlider),
+    dummy2SliderAttachment(processorRef.apvts, "dummy2", dummy2Slider),
+    detuneSliderAttachment(processorRef.apvts, "detune", detuneSlider),
+    dummy4SliderAttachment(processorRef.apvts, "dummy4", dummy4Slider)
 {
     processorRef.apvts.addParameterListener("rangeStart", this);
     processorRef.apvts.addParameterListener("rangeEnd", this);
@@ -261,7 +264,8 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
 
 GranularDelayAudioProcessorEditor::~GranularDelayAudioProcessorEditor()
 {
-    processorRef.apvts.removeParameterListener("mix", this);
+    processorRef.apvts.removeParameterListener("rangeStart", this);
+    processorRef.apvts.removeParameterListener("rangeEnd", this);
 }
 
 //==============================================================================
@@ -275,7 +279,7 @@ void GranularDelayAudioProcessorEditor::parameterChanged(const juce::String& par
     else if (parameterID == "rangeEnd")
     {
         rangeVisualizer.setEnd(newValue);
-        rangeVisualizer.repaint();  // Repaint to show the new range
+        rangeVisualizer.repaint();
     }
 }
 
@@ -316,8 +320,6 @@ void GranularDelayAudioProcessorEditor::resized()
     
     auto waveViewerZone = bounds.withTrimmedTop(static_cast<int>(bounds.getHeight() * 0.1f))
                                 .withTrimmedBottom(static_cast<int>(bounds.getHeight() * 0.6f));
-                                // .withTrimmedLeft(static_cast<int>(bounds.getWidth() * 0.1f))
-                                // .withTrimmedRight(static_cast<int>(bounds.getWidth() * 0.1f));
 
     auto sliderZone = bounds.withTrimmedTop(static_cast<int>(bounds.getHeight() * 0.4f));
 
@@ -362,25 +364,25 @@ std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getComps()
             &mixSlider,
             &rangeStartSlider,
             &rangeEndSlider,
-            &dummySlider1,
-            &dummySlider2,
-            &dummySlider3,
-            &dummySlider4
+            &pitchSlider,
+            &dummy2Slider,
+            &detuneSlider,
+            &dummy4Slider
             };
 }
 
-// Returns a vector containing just the slider components
+// Returns a vector containing just the slider components (in the correct order for drawing)
 std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getSliders()
 {
     return {&inputGainSlider,
-            &mixSlider,
-            &grainSizeSlider,
-            &frequencySlider,
             &rangeStartSlider,
+            &grainSizeSlider,
+            &pitchSlider,
+            &dummy2Slider,
+            &mixSlider,
             &rangeEndSlider,
-            &dummySlider1,
-            &dummySlider2,
-            &dummySlider3,
-            &dummySlider4
+            &frequencySlider,
+            &detuneSlider,
+            &dummy4Slider
             };
 }

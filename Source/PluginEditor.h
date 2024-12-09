@@ -48,23 +48,24 @@ private:
 
 
 //==============================================================================
-struct DelayBar : juce::Component
-{
-    DelayBar(GranularDelayAudioProcessor& processor)
-        : processorRef(processor) {}
+// struct DelayBar : juce::Component
+// {
+//     DelayBar(GranularDelayAudioProcessor& processor)
+//         : processorRef(processor) {}
 
-    void paint(juce::Graphics& g) override;
+//     void paint(juce::Graphics& g) override;
 
-    private:
-        GranularDelayAudioProcessor& processorRef;
-};
+//     private:
+//         GranularDelayAudioProcessor& processorRef;
+// };
 
 
 //==============================================================================
 class RangeVisualiser : public juce::Component
 {
 public:
-    RangeVisualiser() = default;
+    RangeVisualiser(float rangeStart, float rangeEnd)
+        : rangeStartMs(rangeStart), rangeEndMs(rangeEnd) { }
 
     void setStart(float newStart) { rangeStartMs = newStart; }
     void setEnd(float newEnd) { rangeEndMs = newEnd; }
@@ -73,8 +74,8 @@ public:
     void paint(juce::Graphics& g) override;
 
 private:
-    float rangeStartMs = 100.f;
-    float rangeEndMs = 1000.f;
+    float rangeStartMs;
+    float rangeEndMs;
 };
 
 //==============================================================================
@@ -105,10 +106,10 @@ private:
                        frequencySlider,
                        rangeStartSlider,
                        rangeEndSlider,
-                       dummySlider1,
-                       dummySlider2,
-                       dummySlider3,
-                       dummySlider4;
+                       pitchSlider,
+                       dummy2Slider,
+                       detuneSlider,
+                       dummy4Slider;
 
     // Function to get a vector of all components
     std::vector<juce::Component*> getComps();
@@ -127,10 +128,10 @@ private:
                frequencySliderAttachment,
                rangeStartSliderAttachment,
                rangeEndSliderAttachment,
-               dummySlider1Attachment,
-               dummySlider2Attachment,
-               dummySlider3Attachment,
-               dummySlider4Attachment;
+               pitchSliderAttachment,
+               dummy2SliderAttachment,
+               detuneSliderAttachment,
+               dummy4SliderAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GranularDelayAudioProcessorEditor)
 };
