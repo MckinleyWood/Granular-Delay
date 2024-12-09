@@ -82,6 +82,7 @@ private:
     void updateWritePosition(int numSamples);
     void addGrain();
     float getGrainStartSample();
+    float getGrainPitch();
     void fillGrainBuffer(juce::AudioBuffer<float>& grainBuffer, int channel, float startSample, float pitch);
 
     void timerCallback();

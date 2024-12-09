@@ -251,7 +251,7 @@ void GranularDelayAudioProcessor::readGrains(juce::AudioBuffer<float>& buffer, i
         DBG("grainVector Size = " << grainVector.size());
 
         int mainBufferSize = buffer.getNumSamples();
-        for (size_t i = grainVector.size() - 1; i-- > 0;)
+        for (size_t i = grainVector.size(); i-- > 0;)
         {
             DBG("Processing grain #" << i);
 
@@ -289,11 +289,10 @@ void GranularDelayAudioProcessor::addGrain()
     int sampleRate = static_cast<int>(getSampleRate());
     auto chainSettings = getChainSettings(apvts);
     float grainSize = chainSettings.grainSize;
-    float grainPitch = chainSettings.grainPitch;
-    float detune = chainSettings.detune;
     int grainSizeSamples = static_cast<int>(grainSize * sampleRate / 1000);
 
     float startSample = getGrainStartSample();
+    float pitch = getGrainPitch();
 	
     // Copy audio from delayBuffer to new AudioBuffer
 	auto grainBuffer = juce::AudioBuffer<float>(2, grainSizeSamples);
@@ -301,7 +300,8 @@ void GranularDelayAudioProcessor::addGrain()
 
     for (int channel = 0; channel < getTotalNumInputChannels(); ++channel)
     {
-        readFromDelayBuffer(grainBuffer, channel, static_cast<int>(startSample), 1.f);
+        // readFromDelayBuffer(grainBuffer, channel, static_cast<int>(startSample), 1.f);
+        fillGrainBuffer(grainBuffer, channel, startSample, pitch);
     }
     
     // Apply fade envelope to the grain buffer
@@ -340,10 +340,55 @@ float GranularDelayAudioProcessor::getGrainStartSample()
     return startSample;
 }
 
+//
+float GranularDelayAudioProcessor::getGrainPitch()
+{
+    auto chainSettings = getChainSettings(apvts);
+    float grainPitch = chainSettings.grainPitch;
+    float detune = chainSettings.detune;
+    float pitch;
+
+    if (juce::approximatelyEqual<float>(detune, 0.f))
+    {
+        pitch = grainPitch;
+    }
+    else
+    {
+        float detuneFactor = std::pow(2.0f, detune / 1200.0f); 
+
+        float minPitch = grainPitch * detuneFactor;
+        float maxPitch = grainPitch / detuneFactor;
+
+        juce::Random random;
+        pitch = juce::jmap(random.nextFloat(), 0.0f, 1.0f, minPitch, maxPitch);
+    }
+    
+    return pitch;
+}
+
+// 
 void GranularDelayAudioProcessor::fillGrainBuffer(juce::AudioBuffer<float>& grainBuffer, 
                                                   int channel, float startSample, float pitch)
 {
+    float delayBufferReadPosition = startSample;
+    int grainBufferSize = grainBuffer.getNumSamples();
+    int delayBufferSize = delayBuffer.getNumSamples();
+    for (int i = 0; i < grainBufferSize; ++i)
+    {
+        int truncatedPos = static_cast<int>(delayBufferReadPosition);
+        float fraction = delayBufferReadPosition - truncatedPos;
 
+        jassert(truncatedPos + 1 < delayBuffer.getNumSamples());
+        float sample1 = delayBuffer.getSample(channel, truncatedPos);
+        float sample2 = delayBuffer.getSample(channel, truncatedPos + 1);
+        float interpolatedSample = sample1 * (1 - fraction) + sample2 * fraction;
+
+        grainBuffer.setSample(channel, i, interpolatedSample);
+
+        delayBufferReadPosition += pitch;
+        if (delayBufferReadPosition >= delayBufferSize)
+            delayBufferReadPosition -= delayBufferSize;
+    }
 }
 
 
