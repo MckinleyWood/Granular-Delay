@@ -175,8 +175,8 @@ void RangeVisualiser::paint(juce::Graphics &g)
     g.fillAll(juce::Colours::transparentBlack);
 
     auto bounds = getLocalBounds();
-    float startXProportional = 1.f - juce::jmap(rangeStartMs, 0.f, 10000.f, 0.f, 1.f);
-    float endXProportional = 1.f - juce::jmap(rangeEndMs, 0.f, 10000.f, 0.f, 1.f);
+    float startXProportional = 1.f - juce::jmap(rangeStartMs, 0.f, 5000.f, 0.f, 1.f);
+    float endXProportional = 1.f - juce::jmap(rangeEndMs, 0.f, 5000.f, 0.f, 1.f);
     float startX = startXProportional * bounds.getWidth();
     float endX = endXProportional * bounds.getWidth();
     juce::Rectangle<float> range(endX, 0.f, startX - endX, bounds.getHeight());
@@ -202,7 +202,7 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
     rangeStartSlider(*processorRef.apvts.getParameter("rangeStart"), "ms"),
     rangeEndSlider(*processorRef.apvts.getParameter("rangeEnd"), "ms"),
     pitchSlider(*processorRef.apvts.getParameter("grainPitch"), "x"),
-    dummy2Slider(*processorRef.apvts.getParameter("dummy2"), ""),
+    fadeLengthSlider(*processorRef.apvts.getParameter("fadeLength"), ""),
     detuneSlider(*processorRef.apvts.getParameter("detune"), "c"),
     dummy4Slider(*processorRef.apvts.getParameter("dummy4"), ""),
 
@@ -213,7 +213,7 @@ GranularDelayAudioProcessorEditor::GranularDelayAudioProcessorEditor (GranularDe
     rangeStartSliderAttachment(processorRef.apvts, "rangeStart", rangeStartSlider),
     rangeEndSliderAttachment(processorRef.apvts, "rangeEnd", rangeEndSlider),
     pitchSliderAttachment(processorRef.apvts, "grainPitch", pitchSlider),
-    dummy2SliderAttachment(processorRef.apvts, "dummy2", dummy2Slider),
+    fadeLengthSliderAttachment(processorRef.apvts, "fadeLength", fadeLengthSlider),
     detuneSliderAttachment(processorRef.apvts, "detune", detuneSlider),
     dummy4SliderAttachment(processorRef.apvts, "dummy4", dummy4Slider)
 {
@@ -365,7 +365,7 @@ std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getComps()
             &rangeStartSlider,
             &rangeEndSlider,
             &pitchSlider,
-            &dummy2Slider,
+            &fadeLengthSlider,
             &detuneSlider,
             &dummy4Slider
             };
@@ -378,7 +378,7 @@ std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getSliders()
             &rangeStartSlider,
             &grainSizeSlider,
             &pitchSlider,
-            &dummy2Slider,
+            &fadeLengthSlider,
             &mixSlider,
             &rangeEndSlider,
             &frequencySlider,
