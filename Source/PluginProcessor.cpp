@@ -3,13 +3,10 @@
 
 /*
 
-TODO:
+TO-DO:
 
-    • Fix sliders not reflecting skew in parameters
-    • Add two parameters?
-    • Or remove two sliders?
-    • Make code more beautiful
-
+    • Change playback speed to be applied after grains are created?
+    • Change slider sticking conditions to reflect this
 */
 
 //==============================================================================

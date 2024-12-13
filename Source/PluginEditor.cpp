@@ -8,11 +8,14 @@ void LookAndFeel::drawRotarySlider(juce::Graphics &g, int x, int y, int width, i
 {
     using namespace juce;
 
+    int radius = jmin(width, height);
+
     auto bounds = Rectangle<float>(x, y, width, height);
+    bounds = bounds.withSizeKeepingCentre(radius, radius);
 
     // Colour the circle and border
     g.setColour(Colour(70u, 75u, 80u));
-    g.drawEllipse(bounds, width * 0.05f);
+    g.drawEllipse(bounds, radius * 0.05f);
 
     if (auto* crs = dynamic_cast<CustomRotarySlider*>(&slider))
     {
@@ -54,8 +57,8 @@ void CustomRotarySlider::paint(juce::Graphics &g)
     // Paint the circle and bar
     float sliderPosProportional = static_cast<float>(range.convertTo0to1(getValue()));
     getLookAndFeel().drawRotarySlider(g, sliderBounds.getX(), sliderBounds.getY(),
-                                      sliderBounds.getWidth(), sliderBounds.getHeight(),
-                                      sliderPosProportional, startAngle, endAngle, *this);
+                                      sliderBounds.getWidth(), sliderBounds.getHeight(), sliderPosProportional, 
+                                      startAngle, endAngle, *this);
 
     // Paint the centre text box
     g.setFont(getTextHeight());
@@ -289,16 +292,16 @@ void GranularDelayAudioProcessorEditor::resized()
     auto topRow = sliderZone.withTrimmedBottom(static_cast<int>(sliderZone.getHeight() * 0.5f));
     auto bottomRow = sliderZone.withTrimmedTop(static_cast<int>(sliderZone.getHeight() * 0.5f));
     
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
     {
-        sliderBoxes.push_back(topRow.withTrimmedLeft(static_cast<int>(topRow.getWidth() * 0.2f * i))
-                                    .withTrimmedRight(static_cast<int>(topRow.getWidth() * 0.2f * (4 - i))));
+        sliderBoxes.push_back(topRow.withTrimmedLeft(static_cast<int>(topRow.getWidth() * 0.25f * i))
+                                    .withTrimmedRight(static_cast<int>(topRow.getWidth() * 0.25f * (3 - i))));
     }
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
     {
-        sliderBoxes.push_back(bottomRow.withTrimmedLeft(static_cast<int>(bottomRow.getWidth() * 0.2f * i))
-                                       .withTrimmedRight(static_cast<int>(bottomRow.getWidth() * 0.2f * (4 - i))));
+        sliderBoxes.push_back(bottomRow.withTrimmedLeft(static_cast<int>(bottomRow.getWidth() * 0.25f * i))
+                                       .withTrimmedRight(static_cast<int>(bottomRow.getWidth() * 0.25f * (3 - i))));
     }
 
     // Set the bounds of the components
@@ -307,7 +310,7 @@ void GranularDelayAudioProcessorEditor::resized()
     rangeVisualizer.setBounds(waveViewerZone);
 
     auto sliders = getSliders();
-    for(size_t i = 0; i < sliders.size(); ++i)
+    for(size_t i = 0; i < sliderBoxes.size(); ++i)
     {
         sliders[i]->setBounds(sliderBoxes[i]);
     }
@@ -339,11 +342,11 @@ std::vector<juce::Component*> GranularDelayAudioProcessorEditor::getSliders()
             &rangeStartSlider,
             &grainSizeSlider,
             &pitchSlider,
-            &dummy2Slider,
             &mixSlider,
             &rangeEndSlider,
             &frequencySlider,
             &detuneSlider,
+            &dummy2Slider,
             &dummy4Slider
             };
 }
