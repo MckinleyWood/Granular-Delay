@@ -176,134 +176,102 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
     // Give the buffer to the wave viewer 
     waveViewer.pushBuffer(buffer);
 
-    // Copy the input buffer into the delayBuffer
-    fillDelayBuffer(buffer, 1.f);
+    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    {        
+        // Copy the input buffer into the delayBuffer
+        fillDelayBuffer(buffer, channel, 1.f);
 
-    // Read from the grains into the wetBuffer
-    readGrains(wetBuffer);
-    
-    // Mix echoes with dry signal 
-    buffer.applyGain(0, mainBufferSize, 1.f - mix);
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)  
+        // Read from the grains into the wetBuffer
+        readGrains(wetBuffer, channel);
+        
+
+        // Mix echoes with dry signal 
+        buffer.applyGain(channel, 0, mainBufferSize, 1.f - mix);
         buffer.addFrom(channel, 0, wetBuffer, channel, 0, mainBufferSize, mix);
+    }
 
     updateWritePosition(mainBufferSize);
 }
 
-// Copies a buffer to the delayBuffer at the writePosition (with wraparound)
-void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buffer, float gain)
+// Copies one channel of a buffer to the delayBuffer at the writePosition (with wraparound)
+void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float gain)
 {   
-    auto totalNumInputChannels = getTotalNumInputChannels();
     auto bufferSize = buffer.getNumSamples();
     auto delayBufferSize = delayBuffer.getNumSamples();
     // DBG("bufferSize = " << bufferSize);
 
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {        
-        // Check if there is enough room for full buffer in delayBuffer
-        if (delayBufferSize >= bufferSize + writePosition)
-        {
-            // If so, copy entire buffer over
-            delayBuffer.copyFrom(channel, writePosition, buffer.getWritePointer(channel), bufferSize, gain);
-        }
-        else
-        {
-            // Determine how much space is left at the end / how much to put at start
-            auto numSamplesToEnd = delayBufferSize - writePosition;
-            auto numSamplesLeft = bufferSize - numSamplesToEnd;
-
-            // Copy samples to end / start
-            delayBuffer.copyFrom(channel, writePosition, buffer.getWritePointer(channel), numSamplesToEnd, gain);
-            delayBuffer.copyFrom(channel, 0, buffer.getWritePointer(channel, numSamplesToEnd), numSamplesLeft, gain);
-        }    
+    // Check if there is enough room for full buffer in delayBuffer
+    if (delayBufferSize >= bufferSize + writePosition)
+    {
+        // If so, copy entire buffer over
+        delayBuffer.copyFrom(channel, writePosition, buffer.getWritePointer(channel), bufferSize, gain);
     }
+    else
+    {
+        // Determine how much space is left at the end / how much to put at start
+        auto numSamplesToEnd = delayBufferSize - writePosition;
+        auto numSamplesLeft = bufferSize - numSamplesToEnd;
+
+        // Copy samples to end / start
+        delayBuffer.copyFrom(channel, writePosition, buffer.getWritePointer(channel), numSamplesToEnd, gain);
+        delayBuffer.copyFrom(channel, 0, buffer.getWritePointer(channel, numSamplesToEnd), numSamplesLeft, gain);
+    }    
 }
 
-// void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& buffer, 
-//                                                       int channel, int readPosition, float gain)
-// {
-//     auto mainBufferSize = buffer.getNumSamples();
-//     auto delayBufferSize = delayBuffer.getNumSamples();
+void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& buffer, 
+                                                      int channel, int readPosition, float gain)
+{
+    auto mainBufferSize = buffer.getNumSamples();
+    auto delayBufferSize = delayBuffer.getNumSamples();
 
-//     // Check if there are enough samples in delayBuffer left to fill the main buffer
-//     if (delayBufferSize > mainBufferSize + readPosition)
-//     {
-//         // If so, add mainBufferSize samples
-//         buffer.addFrom(channel, 0, delayBuffer.getReadPointer(channel, readPosition), mainBufferSize, gain);
-//     }
-//     else
-//     {
-//         // Determine how many samples are left at the end / how much to get from the start
-//         auto numSamplesToEnd = delayBufferSize - readPosition;
-//         auto numSamplesLeft = mainBufferSize - numSamplesToEnd;
+    // Check if there are enough samples in delayBuffer left to fill the main buffer
+    if (delayBufferSize > mainBufferSize + readPosition)
+    {
+        // If so, add mainBufferSize samples
+        buffer.addFrom(channel, 0, delayBuffer.getReadPointer(channel, readPosition), mainBufferSize, gain);
+    }
+    else
+    {
+        // Determine how many samples are left at the end / how much to get from the start
+        auto numSamplesToEnd = delayBufferSize - readPosition;
+        auto numSamplesLeft = mainBufferSize - numSamplesToEnd;
 
-//         // Add samples from end / start of delayBuffer
-//         buffer.addFrom(channel, 0, delayBuffer.getReadPointer(channel, readPosition), numSamplesToEnd, gain);
-//         buffer.addFrom(channel, numSamplesToEnd, delayBuffer.getReadPointer(channel, 0), numSamplesLeft, gain);
-//     }
-// }
+        // Add samples from end / start of delayBuffer
+        buffer.addFrom(channel, 0, delayBuffer.getReadPointer(channel, readPosition), numSamplesToEnd, gain);
+        buffer.addFrom(channel, numSamplesToEnd, delayBuffer.getReadPointer(channel, 0), numSamplesLeft, gain);
+    }
+}
 
 // Reads from all of the grains in the grainVector into the given buffer
-void GranularDelayAudioProcessor::readGrains(juce::AudioBuffer<float>& buffer)
+void GranularDelayAudioProcessor::readGrains(juce::AudioBuffer<float>& buffer, int channel)
 {
-    if (grainVector.empty())
-        return;
-
-    DBG("Reading grains...");
-    DBG("grainVector Size = " << grainVector.size());
-
-    for (size_t i = grainVector.size(); i-- > 0;)
+    if (!grainVector.empty())
     {
-        DBG("Processing grain #" << i);
+        DBG("Reading grains...");
+        DBG("grainVector Size = " << grainVector.size());
 
-        readOneGrain(buffer, grainVector[i]);
-
-        if (grainVector[i].finished)
+        int mainBufferSize = buffer.getNumSamples();
+        for (size_t i = grainVector.size(); i-- > 0;)
         {
-            grainVector.erase(grainVector.begin() + static_cast<std::vector<Grain>::difference_type>(i));
-            DBG("Grain removed!");
-        }
-    }
-}
+            DBG("Processing grain #" << i);
 
-// 
-void GranularDelayAudioProcessor::readOneGrain(juce::AudioBuffer<float>& buffer, Grain& grain)
-{
-    float readPosition = grain.readPosition;
-    int delayBufferSize = delayBuffer.getNumSamples();
-    int bufferSize = buffer.getNumSamples();
-    for (int channel = 0; channel < getTotalNumInputChannels(); ++channel)
-    {
-        readPosition = grain.readPosition;
-        for (int i = 0; i < bufferSize && (readPosition < grain.endSample || grain.needsToWrapAround[static_cast<size_t>(channel)]); ++i)
-        {
-            int truncatedPos = static_cast<int>(readPosition);
-            float fraction = readPosition - truncatedPos;
+            int grainBufferSize = grainVector[i].buffer.getNumSamples();
+            int readPosition = grainVector[i].readPosition;
+            int samplesToCopy = juce::jmin(grainBufferSize - readPosition, mainBufferSize);
 
-            jassert(truncatedPos < delayBuffer.getNumSamples());
-            float sample1 = delayBuffer.getSample(channel, truncatedPos);
-            float sample2 = delayBuffer.getSample(channel, (truncatedPos + 1) % delayBufferSize); 
-            // mod handles the edge case where we need to interpolate between the last and first samples of delayBuffer
-            float interpolatedSample = sample1 * (1 - fraction) + sample2 * fraction;
-            
-            interpolatedSample *= 0.5f;
+            buffer.addFrom(channel, 0, grainVector[i].buffer, channel, readPosition, samplesToCopy, 0.7f);
 
-            buffer.addSample(channel, i, interpolatedSample);
-
-            readPosition += grain.playbackSpeed;
-            if (readPosition >= delayBufferSize)
+            if (grainBufferSize - readPosition > mainBufferSize)
             {
-                readPosition -= delayBufferSize;
-                grain.needsToWrapAround[static_cast<size_t>(channel)] = false;
+                grainVector[i].readPosition += mainBufferSize;
+            }    
+            else
+            {
+                grainVector.erase(grainVector.begin() + i);
+                DBG("Grain removed!");
             }
         }
     }
-
-    grain.readPosition = readPosition;
-
-    if (grain.readPosition >= grain.endSample && !grain.needsToWrapAround[0])
-        grain.finished = true;
-
 }
 
 // Updates the write position of the delay buffer (after processing a block)
@@ -315,49 +283,36 @@ void GranularDelayAudioProcessor::updateWritePosition(int numSamples)
 
 
 //==============================================================================
-// Adds a new grain to the grainVector
+// Adds a new grain to the grainVector, taking samples from the delayBuffer
 void GranularDelayAudioProcessor::addGrain()
 {
-    // int sampleRate = static_cast<int>(getSampleRate());
-    // auto chainSettings = getChainSettings(apvts);
-    // float grainSize = chainSettings.grainSize;
-    // int grainSizeSamples = static_cast<int>(grainSize * sampleRate / 1000);
-
-    // float startSample = getGrainStartSample();
-    // float pitch = getGrainPitch();
-	
-    // // Copy audio from delayBuffer to new AudioBuffer
-	// auto grainBuffer = juce::AudioBuffer<float>(2, grainSizeSamples);
-    // grainBuffer.clear();
-
-    // for (int channel = 0; channel < getTotalNumInputChannels(); ++channel)
-    // {
-    //     // readFromDelayBuffer(grainBuffer, channel, static_cast<int>(startSample), 1.f);
-    //     fillGrainBuffer(grainBuffer, channel, startSample, pitch);
-    // }
-    
-    // // Apply fade envelope to the grain buffer
-    // int fadeLengthSamples = sampleRate / 2000;
-    // grainBuffer.applyGainRamp(0, fadeLengthSamples, 0, 1);
-    // grainBuffer.applyGainRamp(grainSizeSamples - fadeLengthSamples, fadeLengthSamples, 1, 0);
-
-    // // Initialize Grain object and add it to the vector
-	// Grain grain;
-    // grain.buffer = grainBuffer;
-    // grain.readPosition = 0;
-
-    // grainVector.push_back(grain);
-
-    float sampleRate = static_cast<float>(getSampleRate());
+    int sampleRate = static_cast<int>(getSampleRate());
     auto chainSettings = getChainSettings(apvts);
-    float startSample = getGrainStartSample();
     float grainSize = chainSettings.grainSize;
-    float grainSizeSamples = grainSize * sampleRate / 1000.f;
-    float delayBufferSize = static_cast<float>(delayBuffer.getNumSamples());
-    float playbackSpeed = getGrainPlaybackSpeed();
-    int numChannels = getTotalNumInputChannels();
+    int grainSizeSamples = static_cast<int>(grainSize * sampleRate / 1000);
 
-    Grain grain(startSample, grainSizeSamples, delayBufferSize, playbackSpeed, numChannels);
+    float startSample = getGrainStartSample();
+    float pitch = getGrainPitch();
+	
+    // Copy audio from delayBuffer to new AudioBuffer
+	auto grainBuffer = juce::AudioBuffer<float>(2, grainSizeSamples);
+    grainBuffer.clear();
+
+    for (int channel = 0; channel < getTotalNumInputChannels(); ++channel)
+    {
+        // readFromDelayBuffer(grainBuffer, channel, static_cast<int>(startSample), 1.f);
+        fillGrainBuffer(grainBuffer, channel, startSample, pitch);
+    }
+    
+    // Apply fade envelope to the grain buffer
+    int fadeLengthSamples = sampleRate / 2000;
+    grainBuffer.applyGainRamp(0, fadeLengthSamples, 0, 1);
+    grainBuffer.applyGainRamp(grainSizeSamples - fadeLengthSamples, fadeLengthSamples, 1, 0);
+
+    // Initialize Grain object and add it to the vector
+	Grain grain;
+    grain.buffer = grainBuffer;
+    grain.readPosition = 0;
 
     grainVector.push_back(grain);
 }
@@ -386,7 +341,7 @@ float GranularDelayAudioProcessor::getGrainStartSample()
 }
 
 //
-float GranularDelayAudioProcessor::getGrainPlaybackSpeed()
+float GranularDelayAudioProcessor::getGrainPitch()
 {
     auto chainSettings = getChainSettings(apvts);
     float grainPitch = chainSettings.grainPitch;
@@ -409,6 +364,31 @@ float GranularDelayAudioProcessor::getGrainPlaybackSpeed()
     }
     
     return pitch;
+}
+
+// 
+void GranularDelayAudioProcessor::fillGrainBuffer(juce::AudioBuffer<float>& grainBuffer, 
+                                                  int channel, float startSample, float pitch)
+{
+    float delayBufferReadPosition = startSample;
+    int grainBufferSize = grainBuffer.getNumSamples();
+    int delayBufferSize = delayBuffer.getNumSamples();
+    for (int i = 0; i < grainBufferSize; ++i)
+    {
+        int truncatedPos = static_cast<int>(delayBufferReadPosition);
+        float fraction = delayBufferReadPosition - truncatedPos;
+
+        jassert(truncatedPos + 1 < delayBuffer.getNumSamples());
+        float sample1 = delayBuffer.getSample(channel, truncatedPos);
+        float sample2 = delayBuffer.getSample(channel, truncatedPos + 1);
+        float interpolatedSample = sample1 * (1 - fraction) + sample2 * fraction;
+
+        grainBuffer.setSample(channel, i, interpolatedSample);
+
+        delayBufferReadPosition += pitch;
+        if (delayBufferReadPosition >= delayBufferSize)
+            delayBufferReadPosition -= delayBufferSize;
+    }
 }
 
 

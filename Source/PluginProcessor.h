@@ -23,28 +23,8 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
 //==============================================================================
 struct Grain
 {
-    float readPosition;
-    float endSample;
-    float playbackSpeed;
-    std::vector<bool> needsToWrapAround;
-    bool finished = false;
-
-    Grain(float initialReadPosition, float grainSize, float delayBufferSize, float initialPlaybackSpeed, int numChannels)
-        : readPosition(initialReadPosition),
-          endSample(initialReadPosition + grainSize),
-          playbackSpeed(initialPlaybackSpeed),
-          needsToWrapAround(static_cast<std::vector<bool>::size_type>(numChannels))
-    {
-        if (endSample >= delayBufferSize)
-        {
-            endSample -= delayBufferSize;
-            std::fill(needsToWrapAround.begin(), needsToWrapAround.end(), true);
-        }
-        else
-        {
-            std::fill(needsToWrapAround.begin(), needsToWrapAround.end(), false);
-        }
-    }
+    juce::AudioBuffer<float> buffer;
+    int readPosition;
 };
 
 //==============================================================================
@@ -96,14 +76,14 @@ public:
 
 private:
     //==============================================================================
-    void fillDelayBuffer(juce::AudioBuffer<float>& buffer, float gain);
-    // void readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, int readPosition, float gain);
-    void readGrains(juce::AudioBuffer<float>& buffer);
-    void readOneGrain(juce::AudioBuffer<float>& buffer, Grain& grain);
+    void fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float gain);
+    void readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, int readPosition, float gain);
+    void readGrains(juce::AudioBuffer<float>& buffer, int channel);
     void updateWritePosition(int numSamples);
     void addGrain();
     float getGrainStartSample();
-    float getGrainPlaybackSpeed();
+    float getGrainPitch();
+    void fillGrainBuffer(juce::AudioBuffer<float>& grainBuffer, int channel, float startSample, float pitch);
 
     void timerCallback();
 
