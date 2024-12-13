@@ -46,20 +46,6 @@ private:
     juce::String suffix;
 };
 
-
-//==============================================================================
-// struct DelayBar : juce::Component
-// {
-//     DelayBar(GranularDelayAudioProcessor& processor)
-//         : processorRef(processor) {}
-
-//     void paint(juce::Graphics& g) override;
-
-//     private:
-//         GranularDelayAudioProcessor& processorRef;
-// };
-
-
 //==============================================================================
 class RangeVisualiser : public juce::Component
 {

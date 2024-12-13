@@ -43,7 +43,7 @@ void CustomRotarySlider::paint(juce::Graphics &g)
 
     auto startAngle = degreesToRadians(180.f + 45.f);
     auto endAngle = degreesToRadians(180.f - 45.f) + MathConstants<float>::twoPi;
-    auto range = getRange();
+    auto range = getNormalisableRange();
     auto sliderBounds = getSliderBounds();
     auto compBounds = getLocalBounds();
     auto centre = sliderBounds.getCentre();
@@ -52,10 +52,10 @@ void CustomRotarySlider::paint(juce::Graphics &g)
     g.setFont(compBounds.getHeight() * 0.125f);
 
     // Paint the circle and bar
+    float sliderPosProportional = static_cast<float>(range.convertTo0to1(getValue()));
     getLookAndFeel().drawRotarySlider(g, sliderBounds.getX(), sliderBounds.getY(),
                                       sliderBounds.getWidth(), sliderBounds.getHeight(),
-                                      (float)jmap(getValue(), range.getStart(), range.getEnd(), 0., 1.), 
-                                      startAngle, endAngle, *this);
+                                      sliderPosProportional, startAngle, endAngle, *this);
 
     // Paint the centre text box
     g.setFont(getTextHeight());
@@ -81,13 +81,6 @@ void CustomRotarySlider::paint(juce::Graphics &g)
 // Returns the bounds of the visible slider within the slider component
 juce::Rectangle<int> CustomRotarySlider::getSliderBounds() const
 {
-    // Small sliders
-    // return getLocalBounds().withTrimmedTop(static_cast<int>(getHeight() * 0.375f))
-    //                        .withTrimmedBottom(static_cast<int>(getHeight() * 0.125f))
-    //                        .withTrimmedLeft(static_cast<int>(getWidth() * 0.25f))
-    //                        .withTrimmedRight(static_cast<int>(getWidth() * 0.25f));
-
-    // Big sliders
     return getLocalBounds().withTrimmedTop(getHeight() / 4)
                            .withTrimmedBottom(getHeight() / 12)
                            .withTrimmedLeft(getWidth() / 6)
@@ -134,38 +127,6 @@ juce::String CustomRotarySlider::getDisplayString() const
 
     return str;
 }
-
-
-//==============================================================================
-// void DelayBar::paint(juce::Graphics &g)
-// {
-//     // Calculate delay position in samples
-//     auto mixMs = processorRef.apvts.getRawParameterValue("mix")->load();
-//     auto grainSize = processorRef.apvts.getRawParameterValue("grainSize")->load();
-
-//     auto widthSamples = static_cast<float>(10 * processorRef.getSampleRate());
-//     auto delaySamples = static_cast<float>(mixMs / 1000.f * processorRef.getSampleRate());
-
-//     auto widthPixels = static_cast<float>(getWidth());
-//     auto delayPixels = delaySamples / widthSamples * widthPixels;
-
-//     auto barPosition = widthPixels - delayPixels;
-//     auto opacity = grainSize;
-
-//     g.setColour(juce::Colours::white);
-//     auto bounds = getLocalBounds();
-//     auto r = juce::Rectangle<float>(2.f, bounds.getHeight());
-
-//     while (barPosition > 0 && opacity > 0.01f)
-//     {
-//         g.setOpacity(opacity);
-//         r.setCentre(barPosition, bounds.getCentreY());
-//         g.fillRoundedRectangle(r, 1.f);
-
-//         barPosition -= delayPixels;
-//         opacity *= grainSize;
-//     }
-// }
 
 
 //==============================================================================
@@ -314,9 +275,9 @@ void GranularDelayAudioProcessorEditor::resized()
     // Partition the editor into zones
     auto bounds = getLocalBounds();
 
-    auto titleZone = bounds.withTrimmedBottom(static_cast<int>(bounds.getHeight() * 0.9f));
-
     bounds.reduce(10, 10);
+
+    auto titleZone = bounds.withTrimmedBottom(static_cast<int>(bounds.getHeight() * 0.9f) + 10);
     
     auto waveViewerZone = bounds.withTrimmedTop(static_cast<int>(bounds.getHeight() * 0.1f))
                                 .withTrimmedBottom(static_cast<int>(bounds.getHeight() * 0.6f));

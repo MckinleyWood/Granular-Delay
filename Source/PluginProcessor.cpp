@@ -445,22 +445,22 @@ juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add(std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.f, 1.f, 0.5f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("grainSize", "Grain Size", 
-                                juce::NormalisableRange<float>(1.f, 100.f, 0.f, 0.5f), 50.f));
+                                juce::NormalisableRange<float>(1.f, 100.f, 0.f, 1.f), 50.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("frequency", "Frequency", 
-                                juce::NormalisableRange<float>(1.f, 100.f, 0.f, 0.5f), 50.f));
+                                juce::NormalisableRange<float>(1.f, 100.f, 0.f, 1.f), 50.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("rangeStart", "Range Start",
-                                juce::NormalisableRange<float>(0.f, 5000.f, 0.f, 0.5f), 100.f));
+                                juce::NormalisableRange<float>(0.f, 5000.f, 0.f, 0.58f), 500.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("rangeEnd", "Range End",
-                                juce::NormalisableRange<float>(0.f, 5000.f, 0.f, 0.5f), 1000.f));
+                                juce::NormalisableRange<float>(0.f, 5000.f, 0.f, 0.58f), 1500.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("grainPitch", "Pitch/Speed", 
-                                juce::NormalisableRange<float>(0.25f, 4.f, 0.f, 0.3f), 1.f));
+                                juce::NormalisableRange<float>(0.25f, 4.f, 0.f, 0.43f), 1.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("detune", "Detune",
-                                juce::NormalisableRange<float>(0.f, 500.f, 0.f, 0.3f), 0.f));
+                                juce::NormalisableRange<float>(0.f, 500.f, 0.f, 0.5f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("dummy2", "dummy2", 0.f, 1.f, 0.5f));
 
