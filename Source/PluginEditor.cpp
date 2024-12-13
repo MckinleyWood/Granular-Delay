@@ -175,8 +175,8 @@ void RangeVisualiser::paint(juce::Graphics &g)
     g.fillAll(juce::Colours::transparentBlack);
 
     auto bounds = getLocalBounds();
-    float startXProportional = 1.f - juce::jmap(rangeStartMs, 0.f, 10000.f, 0.f, 1.f);
-    float endXProportional = 1.f - juce::jmap(rangeEndMs, 0.f, 10000.f, 0.f, 1.f);
+    float startXProportional = 1.f - juce::jmap(rangeStartMs, 0.f, 5000.f, 0.f, 1.f);
+    float endXProportional = 1.f - juce::jmap(rangeEndMs, 0.f, 5000.f, 0.f, 1.f);
     float startX = startXProportional * bounds.getWidth();
     float endX = endXProportional * bounds.getWidth();
     juce::Rectangle<float> range(endX, 0.f, startX - endX, bounds.getHeight());

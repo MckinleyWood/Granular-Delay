@@ -5,11 +5,10 @@
 
 TODO:
 
-    0. Add range visualization - done
-    1. Stop rangeStart, rangeEnd, and grainSize from having conflicting values - done
-        ensure rangeStart >= grainSize, rangeEnd >= rangeStart
-    2. Add new parameters: Pitch? Varaiable grain size? Playback speed?
-    3. Add delayBar visualization
+    • Fix sliders not reflecting skew in parameters
+    • Add two parameters?
+    • Or remove two sliders?
+    • Make code more beautiful
 
 */
 
@@ -101,7 +100,7 @@ void GranularDelayAudioProcessor::prepareToPlay (double sampleRate, int samplesP
     delayBuffer.setSize(getTotalNumOutputChannels(), delayBufferSize);
     wetBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
 
-    waveViewer.setSamplesPerBlock(delayBufferSize / 1024);
+    waveViewer.setSamplesPerBlock(delayBufferSize / 2 / 1024);
 
     timer.startTimer(timerInterval);
 
@@ -184,8 +183,7 @@ void GranularDelayAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer
         // Read from the grains into the wetBuffer
         readGrains(wetBuffer, channel);
         
-
-        // Mix echoes with dry signal 
+        // Mix grains with dry signal 
         buffer.applyGain(channel, 0, mainBufferSize, 1.f - mix);
         buffer.addFrom(channel, 0, wetBuffer, channel, 0, mainBufferSize, mix);
     }
@@ -216,30 +214,6 @@ void GranularDelayAudioProcessor::fillDelayBuffer(juce::AudioBuffer<float>& buff
         delayBuffer.copyFrom(channel, writePosition, buffer.getWritePointer(channel), numSamplesToEnd, gain);
         delayBuffer.copyFrom(channel, 0, buffer.getWritePointer(channel, numSamplesToEnd), numSamplesLeft, gain);
     }    
-}
-
-void GranularDelayAudioProcessor::readFromDelayBuffer(juce::AudioBuffer<float>& buffer, 
-                                                      int channel, int readPosition, float gain)
-{
-    auto mainBufferSize = buffer.getNumSamples();
-    auto delayBufferSize = delayBuffer.getNumSamples();
-
-    // Check if there are enough samples in delayBuffer left to fill the main buffer
-    if (delayBufferSize > mainBufferSize + readPosition)
-    {
-        // If so, add mainBufferSize samples
-        buffer.addFrom(channel, 0, delayBuffer.getReadPointer(channel, readPosition), mainBufferSize, gain);
-    }
-    else
-    {
-        // Determine how many samples are left at the end / how much to get from the start
-        auto numSamplesToEnd = delayBufferSize - readPosition;
-        auto numSamplesLeft = mainBufferSize - numSamplesToEnd;
-
-        // Add samples from end / start of delayBuffer
-        buffer.addFrom(channel, 0, delayBuffer.getReadPointer(channel, readPosition), numSamplesToEnd, gain);
-        buffer.addFrom(channel, numSamplesToEnd, delayBuffer.getReadPointer(channel, 0), numSamplesLeft, gain);
-    }
 }
 
 // Reads from all of the grains in the grainVector into the given buffer
@@ -300,12 +274,11 @@ void GranularDelayAudioProcessor::addGrain()
 
     for (int channel = 0; channel < getTotalNumInputChannels(); ++channel)
     {
-        // readFromDelayBuffer(grainBuffer, channel, static_cast<int>(startSample), 1.f);
         fillGrainBuffer(grainBuffer, channel, startSample, pitch);
     }
     
     // Apply fade envelope to the grain buffer
-    int fadeLengthSamples = sampleRate / 2000;
+    int fadeLengthSamples = grainSizeSamples / 5;
     grainBuffer.applyGainRamp(0, fadeLengthSamples, 0, 1);
     grainBuffer.applyGainRamp(grainSizeSamples - fadeLengthSamples, fadeLengthSamples, 1, 0);
 
@@ -326,21 +299,30 @@ float GranularDelayAudioProcessor::getGrainStartSample()
     float rangeStart = chainSettings.rangeStart;
     float rangeEnd = chainSettings.rangeEnd;
 
-    int startSamples = static_cast<int>(rangeStart * sampleRate / 1000);
-    int endSamples = static_cast<int>(rangeEnd * sampleRate / 1000);
+    int rangeStartSamples = static_cast<int>(rangeStart * sampleRate / 1000.f);
+    int rangeEndSamples = static_cast<int>(rangeEnd * sampleRate / 1000.f);
 
-    int minStartSample = (writePosition - startSamples + delayBufferSize) % delayBufferSize;
-	int maxStartSample = (writePosition - endSamples + delayBufferSize) % delayBufferSize;
+    int maxStartSample = writePosition - rangeStartSamples + delayBufferSize;
+	int minStartSample = writePosition - rangeEndSamples + delayBufferSize;
 
-    juce::Random random;
-	float startSample = juce::jmap(random.nextFloat(), 0.0f, 1.0f, 
-                                   static_cast<float>(minStartSample),
-                                   static_cast<float>(maxStartSample));
-    
+    jassert(minStartSample <= maxStartSample); 
+
+    float startSample = minStartSample;
+    if (minStartSample != maxStartSample)
+    {
+        juce::Random random;
+        startSample = juce::jmap(random.nextFloat(), 0.0f, 1.0f, 
+                                 static_cast<float>(minStartSample),
+                                 static_cast<float>(maxStartSample));
+    }
+
+    if (startSample > delayBufferSize)
+            startSample -= delayBufferSize;
+
     return startSample;
 }
 
-//
+// Returns a random pitch / playback speed value within the range set by the pitch and detune parameters
 float GranularDelayAudioProcessor::getGrainPitch()
 {
     auto chainSettings = getChainSettings(apvts);
@@ -366,7 +348,6 @@ float GranularDelayAudioProcessor::getGrainPitch()
     return pitch;
 }
 
-// 
 void GranularDelayAudioProcessor::fillGrainBuffer(juce::AudioBuffer<float>& grainBuffer, 
                                                   int channel, float startSample, float pitch)
 {
@@ -378,9 +359,10 @@ void GranularDelayAudioProcessor::fillGrainBuffer(juce::AudioBuffer<float>& grai
         int truncatedPos = static_cast<int>(delayBufferReadPosition);
         float fraction = delayBufferReadPosition - truncatedPos;
 
-        jassert(truncatedPos + 1 < delayBuffer.getNumSamples());
+        jassert(truncatedPos < delayBuffer.getNumSamples());
         float sample1 = delayBuffer.getSample(channel, truncatedPos);
-        float sample2 = delayBuffer.getSample(channel, truncatedPos + 1);
+        float sample2 = delayBuffer.getSample(channel, (truncatedPos + 1) % delayBufferSize); 
+        // mod handles the edge case where we need to interpolate between the last and first samples of delayBuffer
         float interpolatedSample = sample1 * (1 - fraction) + sample2 * fraction;
 
         grainBuffer.setSample(channel, i, interpolatedSample);
@@ -469,16 +451,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout
                                 juce::NormalisableRange<float>(1.f, 100.f, 0.f, 0.5f), 50.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("rangeStart", "Range Start",
-                                juce::NormalisableRange<float>(0.f, 10000.f, 0.f, 0.5f), 100.f));
+                                juce::NormalisableRange<float>(0.f, 5000.f, 0.f, 0.5f), 100.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("rangeEnd", "Range End",
-                                juce::NormalisableRange<float>(0.f, 10000.f, 0.f, 0.5f), 1000.f));
+                                juce::NormalisableRange<float>(0.f, 5000.f, 0.f, 0.5f), 1000.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("grainPitch", "Pitch/Speed", 
-                                juce::NormalisableRange<float>(0.f, 4.f, 0.f, 0.1f), 1.f));
+                                juce::NormalisableRange<float>(0.25f, 4.f, 0.f, 0.3f), 1.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("detune", "Detune",
-                                juce::NormalisableRange<float>(0.f, 500.f, 0.f, 0.1f), 0.f));
+                                juce::NormalisableRange<float>(0.f, 500.f, 0.f, 0.3f), 0.f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>("dummy2", "dummy2", 0.f, 1.f, 0.5f));
 
