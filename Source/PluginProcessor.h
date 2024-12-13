@@ -14,7 +14,7 @@ struct ChainSettings
     float rangeEnd;
     float grainPitch;
     float detune;
-    float fadeLength;
+    float dummy2;
     float dummy4;
 };
 
@@ -23,19 +23,28 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
 //==============================================================================
 struct Grain
 {
-    float readPosition; // CAN BE GREATER THAN THE SIZE OF DELAY BUFFER
-    float startSample; 
-    float endSample; // CAN BE GREATER THAN THE SIZE OF DELAY BUFFER
-    float grainSizeSamples;
+    float readPosition;
+    float endSample;
     float playbackSpeed;
+    std::vector<bool> needsToWrapAround;
     bool finished = false;
 
-    Grain(float initialReadPosition, float grainSize, float initialPlaybackSpeed)
+    Grain(float initialReadPosition, float grainSize, float delayBufferSize, float initialPlaybackSpeed, int numChannels)
         : readPosition(initialReadPosition),
-          startSample(initialReadPosition),
-          endSample(startSample + grainSize),
-          grainSizeSamples(grainSize),
-          playbackSpeed(initialPlaybackSpeed) { }
+          endSample(initialReadPosition + grainSize),
+          playbackSpeed(initialPlaybackSpeed),
+          needsToWrapAround(static_cast<std::vector<bool>::size_type>(numChannels))
+    {
+        if (endSample >= delayBufferSize)
+        {
+            endSample -= delayBufferSize;
+            std::fill(needsToWrapAround.begin(), needsToWrapAround.end(), true);
+        }
+        else
+        {
+            std::fill(needsToWrapAround.begin(), needsToWrapAround.end(), false);
+        }
+    }
 };
 
 //==============================================================================
@@ -88,13 +97,13 @@ public:
 private:
     //==============================================================================
     void fillDelayBuffer(juce::AudioBuffer<float>& buffer, float gain);
+    // void readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, int readPosition, float gain);
     void readGrains(juce::AudioBuffer<float>& buffer);
     void readOneGrain(juce::AudioBuffer<float>& buffer, Grain& grain);
     void updateWritePosition(int numSamples);
     void addGrain();
     float getGrainStartSample();
     float getGrainPlaybackSpeed();
-    float getFadeForSample(float startSample, float endSample, float currentSample);
 
     void timerCallback();
 
@@ -102,10 +111,8 @@ private:
     juce::TimedCallback timer;
     std::vector<Grain> grainVector;
 
-    juce::AudioBuffer<float> delayBuffer,
-                             wetBuffer,
-                             fadeBuffer;
-
+    juce::AudioBuffer<float> delayBuffer;
+    juce::AudioBuffer<float> wetBuffer;
     std::atomic<bool> grainRequested { false };
     std::atomic<int> timerInterval { 10 };
     int writePosition { 0 };

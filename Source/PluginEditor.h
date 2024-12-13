@@ -107,7 +107,7 @@ private:
                        rangeStartSlider,
                        rangeEndSlider,
                        pitchSlider,
-                       fadeLengthSlider,
+                       dummy2Slider,
                        detuneSlider,
                        dummy4Slider;
 
@@ -129,7 +129,7 @@ private:
                rangeStartSliderAttachment,
                rangeEndSliderAttachment,
                pitchSliderAttachment,
-               fadeLengthSliderAttachment,
+               dummy2SliderAttachment,
                detuneSliderAttachment,
                dummy4SliderAttachment;
 
