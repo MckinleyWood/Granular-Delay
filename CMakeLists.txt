@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 cmake_policy(SET CMP0175 OLD)
-set(CMAKE_BUILD_TYPE Debug)
+# set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(GranularDelay VERSION 0.0.1)
+project(GranularDelay VERSION 1.0.0)
 
 add_subdirectory(JUCE)
 set(JUCE_PATH "${CMAKE_SOURCE_DIR}/JUCE")

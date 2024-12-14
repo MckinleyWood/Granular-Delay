@@ -24,7 +24,9 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
 struct Grain
 {
     juce::AudioBuffer<float> buffer;
-    int readPosition;
+    float preBlockReadPosition = 0;
+    float postBlockReadPostion = 0;
+    float playbackSpeed;
 };
 
 //==============================================================================
@@ -77,13 +79,14 @@ public:
 private:
     //==============================================================================
     void fillDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, float gain);
-    void readFromDelayBuffer(juce::AudioBuffer<float>& buffer, int channel, int readPosition, float gain);
     void readGrains(juce::AudioBuffer<float>& buffer, int channel);
-    void updateWritePosition(int numSamples);
+    void readOneGrain(juce::AudioBuffer<float>& buffer, Grain& grain, int channel);
+    void updateWritePosition(int blockSize);
+    void cleanUpGrains();
     void addGrain();
-    float getGrainStartSample();
+    int getGrainStartSample();
     float getGrainPitch();
-    void fillGrainBuffer(juce::AudioBuffer<float>& grainBuffer, int channel, float startSample, float pitch);
+    void fillGrainBuffer(juce::AudioBuffer<float>& grainBuffer, int channel, int startSample);
 
     void timerCallback();
 
