@@ -10,8 +10,6 @@ set(JUCE_PATH "${CMAKE_SOURCE_DIR}/JUCE")
 include_directories(${JUCE_PATH}/modules)
 
 juce_add_plugin(GranularDelay
-    # ICON_BIG ...                              # ICON_* arguments specify a path to an image file to use as an icon for the Standalone
-    # ICON_SMALL ...
     PLUGIN_NAME "Granular Delay"
     COMPANY_NAME "Mckinley Wood"                # Specify the name of the plugin's author
     BUNDLE_ID "com.MckinleyWood.GranularDelay"
@@ -23,7 +21,7 @@ juce_add_plugin(GranularDelay
     COPY_PLUGIN_AFTER_BUILD TRUE                # Should the plugin be installed to a default location after building?
     PLUGIN_MANUFACTURER_CODE MWod               # A four-character manufacturer id with at least one upper-case character
     PLUGIN_CODE Gdel                            # A unique four-character plugin id with exactly one upper-case character
-    FORMATS VST3 Standalone                     # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
+    FORMATS VST3                                # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
     PRODUCT_NAME "GranularDelay")               # The name of the final executable, which can differ from the target name
 
 juce_generate_juce_header(GranularDelay)
@@ -33,8 +31,7 @@ target_sources(GranularDelay
         Source/PluginEditor.cpp
         Source/PluginProcessor.cpp
         Source/PluginEditor.h
-        Source/PluginProcessor.h
-        )
+        Source/PluginProcessor.h)
 
 target_link_libraries(GranularDelay
     PRIVATE
